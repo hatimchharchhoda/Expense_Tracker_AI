@@ -1,38 +1,34 @@
-'use client'
-
+'use client';
+import './globals.css';
 import { useSession } from 'next-auth/react';
 
 function Page() {
-    const { data: session, status } = useSession(); // Corrected variable name for clarity
-    const authStatus = status === "authenticated"
-    if (status === "loading") {
-        return <div className="w-full py-8 mt-4 text-center">Loading...</div>;
-    }
-    if (!authStatus) {
-        return (
-            <div className="w-full py-8 mt-4 text-center">
-                <div className="flex flex-wrap">
-                    <div className="p-2 w-full">
-                        <h1 className="text-2xl font-bold hover:text-gray-500">
-                            Login to Start
-                        </h1>
-                    </div>
-                </div>
-            </div>
-        );
-    } else {
-        return (
-            <div className="w-full py-8 mt-4 text-center">
-                <div className="flex flex-wrap">
-                    <div className="p-2 w-full">
-                        <h1 className="text-2xl font-bold hover:text-gray-500">
-                            {`Welcome ${session.user.username}`}
-                        </h1>
-                    </div>
-                </div>
-            </div>
-        );
-    }
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    // Display a loading state while session data is being fetched
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center py-8 h-screen">
+      {session ? (
+        <div className="py-4 px-8 bg-green-200 rounded-lg">
+          <p className="text-green-800 font-semibold">Welcome, {session.user?.name || 'User'}!</p>
+          <p>You are logged in.</p>
+        </div>
+      ) : (
+        <div className="py-4 px-8 bg-red-200 rounded-lg">
+          <p className="text-red-800 font-semibold">You are not logged in.</p>
+          <p>Please sign in to access more features.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default Page;

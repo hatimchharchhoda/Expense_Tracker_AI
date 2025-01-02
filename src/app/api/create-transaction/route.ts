@@ -5,15 +5,16 @@ export async function POST(request:Request) {
   await dbConnect();
 
   try {
-    const {name ,type , amount , color} = await request.json();
+    const {name ,type , amount, user , color} = await request.json();
 
     const Create = new Transaction({
         name,
         type,
         amount,
+        user,
         color
     })
-
+    
     await Create.save()
     // await Create.save(function (err) {
     //     if (!err) return res.json(Create);

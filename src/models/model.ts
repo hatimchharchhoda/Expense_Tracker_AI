@@ -5,6 +5,13 @@ export interface categories extends Document {
   color: string,
 }
 
+export interface User extends Document {
+  username: string,
+  email: string,
+  password: string,
+  budget: Number
+}
+
 // categories => field => ['type', 'color']
 const categories_model: Schema<categories> = new mongoose.Schema({
     type: { type: String},
@@ -16,6 +23,7 @@ export interface transaction extends Document {
   type: string,
   amount: Number,
   color: String,
+  user : User,
   date: Date
 }
 
@@ -25,15 +33,11 @@ const transaction_model : Schema<transaction> = new mongoose.Schema({
     type: { type: String},
     amount: { type: Number },
     color : {type : String},
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     date: { type: Date, default: Date.now}
 })
 
-export interface User extends Document {
-  username: string,
-  email: string,
-  password: string,
-  budget: Number
-}
+
 
 const UserSchema: Schema<User> = new mongoose.Schema({
     username: {

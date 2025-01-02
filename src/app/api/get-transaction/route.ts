@@ -1,11 +1,11 @@
 import dbConnect from '@/lib/dbConnect';
 import {Transaction} from '@/models/model';
 
-export async function GET(request:Request) {
+export async function POST(request:Request) {
     await dbConnect();
-  
+    const { user } = await request.json();
     try {
-      const transactions = await Transaction.find({});
+      const transactions = await Transaction.find({user});
       // let filter = await data.map(v => Object.assign({}, { type: v.type, color: v.color }));
       return Response.json({
         success: true,

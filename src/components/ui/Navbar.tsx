@@ -1,4 +1,6 @@
-import {Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button} from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
+import { useSession, signOut } from 'next-auth/react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export const AcmeLogo = () => {
   return (
@@ -14,41 +16,76 @@ export const AcmeLogo = () => {
 };
 
 export default function AppBar() {
+  const { data: session } = useSession();
+  const user = session?.user;
   return (
-    <Navbar className="py-4 bg-slate-500">
+    <Navbar className="py-4 bg-white border-b border-gray-200">
       <NavbarBrand>
         <AcmeLogo />
         <Link href="/">
-        <p className="font-bold text-inherit">Expense Tracker</p>
+          <p className="font-bold text-inherit text-2xl">Expense Tracker</p>
         </Link>
       </NavbarBrand>
-      <NavbarContent className="hidden sm:flex gap-7" justify="center">
-        <NavbarItem>
-          <Link href="/dashboard">
-            DashBoard
-          </Link>
-        </NavbarItem>
-        <NavbarItem isActive>
-          <Link aria-current="page" href="/add-transaction">
-            Add Transaction
-          </Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Link color="foreground" href="/history">
-            History
-          </Link>
-        </NavbarItem>
-      </NavbarContent>
-      <NavbarContent justify="end">
-        <NavbarItem className="hidden lg:flex">
-          <Link href="/signin">Login</Link>
-        </NavbarItem>
-        <NavbarItem>
-          <Button as={Link} color="primary" href="/signup" variant="flat">
-            Sign Up
-          </Button>
-        </NavbarItem>
-      </NavbarContent>
+      {session ? (
+        <>
+          <NavbarContent className="hidden sm:flex gap-7" justify="center">
+            <NavbarItem>
+              <Link href="/dashboard" className="hover:text-blue-500 transition-colors">
+                Dashboard
+              </Link>
+            </NavbarItem>
+            <NavbarItem isActive>
+              <Link
+                aria-current="page"
+                href="/add-transaction"
+                className="hover:text-blue-500 transition-colors"
+              >
+                Add Transaction
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link
+                href="/history"
+                className="hover:text-blue-500 transition-colors"
+              >
+                History
+              </Link>
+            </NavbarItem>
+          </NavbarContent>
+          <NavbarContent justify="end" className="flex items-center gap-4">
+            {/* Avatar and Logout Button together */}
+            <Link href="/profile">
+              <Avatar>
+                <AvatarImage src={user?.image || ''} alt={user?.name || 'User'} />
+                <AvatarFallback>{user?.username?.[0] || 'U'}</AvatarFallback>
+              </Avatar>
+            </Link>
+            <Button
+              onPress={() => signOut()}
+              className=" mr-4 bg-blue-500 rounded-lg text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
+            >
+              Logout
+            </Button>
+          </NavbarContent>
+        </>
+      ) : (
+        <>
+          <div className="hidden lg:flex gap-2">
+            <Link
+              href="/signup"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
+            >
+              Sign Up
+            </Link>
+            <Link
+              href="/signin"
+              className="px-4 py-2 mr-3 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:ring-2 focus:ring-gray-400 transition-all"
+            >
+              Login
+            </Link>
+          </div>
+        </>
+      )}
     </Navbar>
   );
 }
