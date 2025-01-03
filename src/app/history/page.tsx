@@ -40,14 +40,34 @@ export default function List() {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      const userId = session?.user?._id;
-      const data = { user: userId };
-      const response = await axios.post('/api/get-transaction', data);
-      setTransactions(response.data.data);
+      const storedSession = localStorage.getItem('session');
+      if (!storedSession) {
+        toast({
+          title: 'Error',
+          description: "No session found. Please log in.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+      const { user } = JSON.parse(storedSession);
+      const userId = user._id;
+      try {
+        const response = await axios.post('/api/get-transaction', { user: userId });
+        setTransactions(response.data.data);
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: "Failed to fetch transactions",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchTransactions();
-  }, [session]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100">

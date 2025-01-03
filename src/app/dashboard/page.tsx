@@ -4,7 +4,7 @@ import { Doughnut } from 'react-chartjs-2'
 import { chartData, getLabels, getTotal } from '@/helper/graphData';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
-import  Label  from '@/components/Labels';
+import Label from '@/components/Labels';
 import { useSession } from 'next-auth/react';
 
 Chart.register(ArcElement)
@@ -12,21 +12,24 @@ Chart.register(ArcElement)
 function Page() {
     const [transactions, setTransactions] = useState([]);
     const { data: session } = useSession();
+    const storedSession = localStorage.getItem('session');
+    if (!storedSession) {
+        console.log("Sesson error");
+        return;
+    }
     const getTransactions = useCallback(async () => {
+        const { user } = JSON.parse(storedSession);
+        const userId = user._id;
         try {
-            const userId = session?.user?._id;
-            const data = {
-                "user" : userId
-            }
-            const response = await axios.post('/api/get-transaction',data);
-            setTransactions(response.data.data)
+            const response = await axios.post('/api/get-transaction', { user: userId });
+            setTransactions(response.data.data);
         } catch (error) {
             console.log(error)
         }
     }, [session]);
     useEffect(() => {
         getTransactions()
-    }, [session]); // Empty dependency array ensures it runs once when the component is mounted
+    }, []); // Empty dependency array ensures it runs once when the component is mounted
     return (
         <div className="flex justify-center py-8  min-h-screen">
             <div className="item relative max-w-xs mx-auto">

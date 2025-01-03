@@ -3,13 +3,14 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 function Page() {
   const { register, handleSubmit, resetField } = useForm();
   const { toast } = useToast();
   const { data: session } = useSession();
   const userId = session?.user?._id;
-
+  const router = useRouter();
   const onSubmit = async (data: any) => {
     if (!data) return {};
     let color;
@@ -43,6 +44,7 @@ function Page() {
     }
     resetField("name");
     resetField("amount");
+    router.replace('/history');
   };
 
   return (

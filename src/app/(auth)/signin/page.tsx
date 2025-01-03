@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { signIn } from 'next-auth/react';
+import { getSession, signIn } from 'next-auth/react';
 import {
   Form,
   FormField,
@@ -17,10 +17,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInSchema } from '@/schemas/signInSchema';
+import { useSession } from 'next-auth/react';
 
 export default function SignInForm() {
   const router = useRouter();
-
+  const { data : session } = useSession();
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -37,7 +38,6 @@ export default function SignInForm() {
       password: data.password,
     });
     console.log(result);
-
     if (result?.error) {
       if (result.error === 'CredentialsSignin') {
         toast({
@@ -58,6 +58,12 @@ export default function SignInForm() {
       description: 'Redirecting to home page',
       variant: "default"
     });
+    const session = await getSession();
+    if (session) {
+      localStorage.setItem('session', JSON.stringify(session));
+    }
+    console.log(localStorage.getItem('session'));
+    router.refresh(); // Refresh the session-aware components
     router.replace('/');
   };
 
