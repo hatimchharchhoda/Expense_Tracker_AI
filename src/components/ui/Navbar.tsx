@@ -1,6 +1,7 @@
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
 import { useSession, signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useEffect, useState } from "react";
 
 export const AcmeLogo = () => {
   return (
@@ -17,7 +18,18 @@ export const AcmeLogo = () => {
 
 export default function AppBar() {
   const { data: session } = useSession();
+  const [localUser, setLocalUser] = useState(null);
   const user = session?.user;
+
+  useEffect(() => {
+      // Update localStorage when session changes
+      if (session) {
+        localStorage.setItem('session', JSON.stringify(session));
+        setLocalUser(session.user);
+      }
+    }, [session]);
+
+    const isAuthenticated = localStorage.getItem('session');
   return (
     <Navbar className="py-4 bg-white border-b border-gray-200">
       <NavbarBrand>
@@ -26,7 +38,7 @@ export default function AppBar() {
           <p className="font-bold text-inherit text-2xl">Expense Tracker</p>
         </Link>
       </NavbarBrand>
-      {session ? (
+      {isAuthenticated ? (
         <>
           <NavbarContent className="hidden sm:flex gap-7" justify="center">
             <NavbarItem>
@@ -61,7 +73,9 @@ export default function AppBar() {
               </Avatar>
             </Link>
             <Button
-              onPress={() => signOut()}
+              onPress={() => {
+                localStorage.removeItem('session');
+                signOut()}}
               className=" mr-4 bg-blue-500 rounded-lg text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
             >
               Logout

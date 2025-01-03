@@ -1,12 +1,15 @@
+import {nextui} from '@nextui-org/theme';
 import type { Config } from "tailwindcss";
+import {nextui} from "@nextui-org/react";
 import plugin from "tailwindcss/plugin";
 import { blackA, mauve, violet, indigo, purple } from "@radix-ui/colors";
 export default {
-	darkMode: ["class"],
+	//darkMode: ["class"],
 	content: [
 		"./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
 		"./src/components/**/*.{js,ts,jsx,tsx,mdx}",
 		"./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+		"./node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}",
 	],
 	theme: {
 		extend: {
@@ -108,13 +111,9 @@ export default {
 			}
 		}
 	},
-	plugins: [
-		plugin(({ matchUtilities }) => {
+  plugins: [plugin(({ matchUtilities }) => {
 			matchUtilities({
 				perspective: (value) => ({
-					perspective: value,
-				}),
-			});
-		}),
-		require("tailwindcss-animate")],
+					perspective: value,}),});
+		}),require("tailwindcss-animate"),nextui()],
 } satisfies Config;
