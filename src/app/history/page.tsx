@@ -8,13 +8,14 @@ import { Select, SelectSection, SelectItem } from "@nextui-org/select";
 
 export const filterOptions = [
   { key: "default", label: "Default" },
-  { key: "expense", label: "Expenses" },
-  { key: "investment", label: "Investments" },
-  { key: "savings", label: "Savings" },
+  { key: "Expense", label: "Expenses" },
+  { key: "Investment", label: "Investment" },
+  { key: "Savings", label: "Savings" },
 ];
 
 interface Transact {
   _id: string;
+  type: string;
   name: string;
   amount: number;
   color?: string;
@@ -57,7 +58,6 @@ export default function List() {
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const transactionId = e.currentTarget.id;
     setLoading(true);
-
     try {
       const del = await axios.delete(`/api/delete-transaction/${transactionId}`);
       if (del.status === 200) {
@@ -80,6 +80,17 @@ export default function List() {
     } finally {
       setLoading(false);
     }
+  };
+  const handleChange : React.ChangeEventHandler<HTMLSelectElement> = (event) => {
+    const selectedValue = event.target.value;
+    if(selectedValue === "default") {
+      fetchTransactions();
+      return;
+    }
+    const filteredtransactions = transactions.filter((transaction) => (transaction.type == selectedValue));
+    setTransactions(filteredtransactions);
+    saveToCache(filteredtransactions);
+    console.log("Filtered transactions:", filteredtransactions);
   };
 
   const fetchTransactions = async () => {
@@ -153,6 +164,7 @@ export default function List() {
               className="max-w-sm"
               items={filterOptions}
               label="Filter By"
+              onChange={handleChange}
               defaultSelectedKeys={["default"]}
             >
               {(option) => <SelectItem>{option.label}</SelectItem>}
