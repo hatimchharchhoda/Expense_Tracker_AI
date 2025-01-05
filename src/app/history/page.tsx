@@ -4,13 +4,14 @@ import axios from 'axios';
 import { useToast } from "@/hooks/use-toast";
 import { Delete } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectSection, SelectItem } from "@nextui-org/select";
+import { Select, SelectItem } from "@nextui-org/select";
 
 export const filterOptions = [
   { key: "default", label: "Default" },
   { key: "Expense", label: "Expenses" },
   { key: "Investment", label: "Investment" },
   { key: "Savings", label: "Savings" },
+  { key: "Other", label: "Other" },
 ];
 
 interface Transact {
@@ -28,6 +29,7 @@ interface CachedData {
 
 export default function List() {
   const [transactions, setTransactions] = useState<Transact[]>([]);
+  const [filtered, setFiltered] = useState<Transact[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
@@ -64,7 +66,7 @@ export default function List() {
         const updatedTransactions = transactions.filter(t => t._id !== transactionId);
         setTransactions(updatedTransactions);
         saveToCache(updatedTransactions);
-
+        setFiltered(updatedTransactions)
         toast({
           title: 'Success',
           description: "Transaction Deleted",
@@ -81,17 +83,20 @@ export default function List() {
       setLoading(false);
     }
   };
-  const handleChange : React.ChangeEventHandler<HTMLSelectElement> = (event) => {
+  const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
     const selectedValue = event.target.value;
-    if(selectedValue === "default") {
-      fetchTransactions();
+
+    if (selectedValue === "default") {
+      setFiltered(transactions);
       return;
     }
-    const filteredtransactions = transactions.filter((transaction) => (transaction.type == selectedValue));
-    setTransactions(filteredtransactions);
-    saveToCache(filteredtransactions);
-    console.log("Filtered transactions:", filteredtransactions);
+    // Filter transactions based on selected value
+    const filteredTransactions = transactions.filter((transaction) => transaction.type === selectedValue);
+
+    // Update the state with the filtered transactions
+    setFiltered(filteredTransactions);
   };
+
 
   const fetchTransactions = async () => {
     const storedSession = localStorage.getItem('session');
@@ -110,8 +115,10 @@ export default function List() {
       const userId = user._id;
       const response = await axios.post('/api/get-transaction', { user: userId });
       const fetchedTransactions = response.data.data;
-      setTransactions(fetchedTransactions);
+
       saveToCache(fetchedTransactions);
+      setTransactions(fetchedTransactions);
+      setFiltered(fetchedTransactions); // Update filtered state with new transactions
     } catch (error) {
       toast({
         title: 'Error',
@@ -125,9 +132,9 @@ export default function List() {
 
   useEffect(() => {
     const cachedTransactions = getFromCache();
-
     if (cachedTransactions) {
       setTransactions(cachedTransactions);
+      setFiltered(cachedTransactions);
       setLoading(false);
       // Fetch in background to update cache
       fetchTransactions();
@@ -149,51 +156,49 @@ export default function List() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {transactions.length === 0 ? (
+    <div className="flex flex-col items-center py-8">
+      <div className='flex gap-20 w-full max-w-3xl'>
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">
+          Transaction History
+        </h1>
+        <Select
+          className="max-w-sm"
+          items={filterOptions}
+          label="Filter By"
+          onChange={handleChange}
+          defaultSelectedKeys={["default"]}
+        >
+          {(option) => <SelectItem>{option.label}</SelectItem>}
+        </Select>
+      </div>
+      {filtered.length === 0 && transactions.length == 0 ? (
         <h1 className="text-2xl font-bold text-gray-700 text-center mt-20">
           No Transactions
         </h1>
       ) : (
-        <div className="flex flex-col items-center py-8">
-          <div className='flex gap-20 w-full max-w-3xl'>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">
-              Transaction History
-            </h1>
-            <Select
-              className="max-w-sm"
-              items={filterOptions}
-              label="Filter By"
-              onChange={handleChange}
-              defaultSelectedKeys={["default"]}
+        <div className="w-full max-w-3xl space-y-4 py-4">
+          {filtered.map((transaction) => (
+            <div
+              key={transaction._id}
+              className="flex items-center justify-between bg-white shadow-md rounded-lg p-4 border-l-4"
+              style={{
+                borderColor: transaction.color ?? '#e5e5e5'
+              }}
             >
-              {(option) => <SelectItem>{option.label}</SelectItem>}
-            </Select>
-          </div>
-          <div className="w-full max-w-3xl space-y-4 py-4">
-            {transactions.map((transaction) => (
-              <div
-                key={transaction._id}
-                className="flex items-center justify-between bg-white shadow-md rounded-lg p-4 border-l-4"
-                style={{
-                  borderColor: transaction.color ?? '#e5e5e5'
-                }}
-              >
-                <div className="flex flex-col">
-                  <span className="font-semibold text-gray-800">{transaction.name}</span>
-                  <span className="text-gray-600">Amount: ₹{transaction.amount}</span>
-                </div>
-                <button
-                  className="text-gray-500 hover:text-red-500 transition-colors"
-                  id={transaction._id}
-                  onClick={handleClick}
-                  disabled={loading}
-                >
-                  <Delete size={24} />
-                </button>
+              <div className="flex flex-col">
+                <span className="font-semibold text-gray-800">{transaction.name}</span>
+                <span className="text-gray-600">Amount: ₹{transaction.amount}</span>
               </div>
-            ))}
-          </div>
+              <button
+                className="text-gray-500 hover:text-red-500 transition-colors"
+                id={transaction._id}
+                onClick={handleClick}
+                disabled={loading}
+              >
+                <Delete size={24} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

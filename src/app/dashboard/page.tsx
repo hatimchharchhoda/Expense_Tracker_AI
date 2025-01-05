@@ -1,12 +1,12 @@
 'use client'
 import { Chart, ArcElement } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
-import { chartData, getLabels, getTotal } from '@/helper/graphData';
+import { chartData, getTotal } from '@/helper/graphData';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import Label from '@/components/Labels';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { Chart as Area } from '@/components/AreaGraph';
 // Register Chart.js components
 Chart.register(ArcElement)
 
@@ -16,6 +16,7 @@ interface Transaction {
   type: string;
   name: string;
   color: string;
+  date : Date;
 }
 
 interface CachedDashboardData {
@@ -27,9 +28,13 @@ function Page() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const AreaData = transactions.map((transact) => {
+    return {
+      desktop: transact.amount,
+    }});
 
   // Cache duration (2 minutes for dashboard data since it changes frequently)
-  const CACHE_DURATION = 15 * 60 * 1000;
+  const CACHE_DURATION = 2 * 60 * 1000;
 
   const saveToCache = (transactions: Transaction[]) => {
     const cacheData: CachedDashboardData = {
@@ -131,15 +136,18 @@ function Page() {
   }
 
   return (
-    <div className="flex justify-center py-8 min-h-screen">
-      <div className="item relative max-w-xs mx-auto">
+    <div className="flex flex-row justify-center py-8 min-h-screen">
+      <div className='mx-auto min-w-[500px] min-h=[800px]'>
+      <Area chartData = {AreaData} />
+      </div>
+      <div className="item relative max-w-sm mx-auto">
         {transactions.length > 0 ? (
           <div className="chart relative">
             {/* Centered Total */}
             <div className="absolute inset-0 flex flex-col justify-center items-center z-10">
-              <h3 className="text-lg font-bold">Total</h3>
+              <h3 className="text-lg font-bold">Total Transactions</h3>
               <span className="text-3xl text-emerald-400">
-                ${getTotal(transactions) ?? 0}
+              ₹{getTotal(transactions) ?? 0}
               </span>
             </div>
             {/* Doughnut Chart */}

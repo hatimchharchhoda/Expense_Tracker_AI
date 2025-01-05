@@ -1,8 +1,8 @@
 import dbConnect from '@/lib/dbConnect';
 import {Transaction} from '@/models/model';
 
-export async function DELETE(request:Request,context: { params: { _id: string } }) {
-    const {_id} = context.params;
+export async function DELETE(request:Request,{params} : any) {
+    const {_id} = await params;
     await dbConnect();
     try {
         

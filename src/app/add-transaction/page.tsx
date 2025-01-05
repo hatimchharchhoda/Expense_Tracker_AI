@@ -5,10 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@nextui-org/switch";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 interface TransactionFormData {
   name: string;
-  type: "Investment" | "Expense" | "Savings";
+  type: string;
   amount: string;
 }
 
@@ -20,6 +22,9 @@ interface Transaction extends TransactionFormData {
 function Page() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, resetField, formState: { errors } } = useForm<TransactionFormData>();
+  const [generate, setGenerate] = useState(false)
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API as string);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
   const { toast } = useToast();
   const router = useRouter();
 
@@ -27,31 +32,22 @@ function Page() {
     const colors = {
       Investment: "#FCBE44",
       Expense: "#FF0000",
-      Savings: "#90EE90"
+      Savings: "#90EE90",
     };
-    return colors[type as keyof typeof colors] || "#90EE90";
+    return colors[type as keyof typeof colors] || "#01F4FC";
   };
 
-  const updateLocalCache = (newTransaction: Transaction) => {
-    try {
-      const cachedData = localStorage.getItem('dashboardCache');
-      if (cachedData) {
-        const { transactions, timestamp } = JSON.parse(cachedData);
-        transactions.push(newTransaction);
-        localStorage.setItem('dashboardCache', JSON.stringify({
-          transactions,
-          timestamp
-        }));
-      }
-    } catch (error) {
-      console.error('Error updating cache:', error);
+  const handleAI = async (e: any) => {
+    if (e) {
+      setGenerate(true)
+    } else {
+      setGenerate(false)
     }
-  };
+  }
 
   const onSubmit = async (data: TransactionFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       const storedSession = localStorage.getItem('session');
       if (!storedSession) {
@@ -62,7 +58,25 @@ function Page() {
         });
         return;
       }
-
+      if (generate) {
+        const categories = [
+          "Food & Dining", "Shopping", "Transportation",
+          "Bills & Utilities", "Entertainment", "Healthcare",
+          "Travel", "Business", "Other"
+        ]
+        const prompt = `You have to categorize this expense : ${data.name} based on given ${categories} and answer in only one category`;
+        try {
+          const result = await model.generateContent(prompt);
+          if(result.response.candidates){
+          const type = (result.response.candidates[0].content.parts[0].text)
+            if(type){
+              data.type = type;
+            }
+          }
+        } catch (error) {
+          console.error("Error making request:", error);
+        }
+      }
       const { user } = JSON.parse(storedSession);
       const transaction: Transaction = {
         ...data,
@@ -71,16 +85,14 @@ function Page() {
       };
 
       const response = await axios.post("/api/create-transaction", transaction);
-      
+
       if (response.status === 200) {
-        updateLocalCache(response.data.transaction);
-        
+
         toast({
           title: "Success",
           description: "Transaction added successfully",
           variant: "default",
         });
-        
         resetField("name");
         resetField("amount");
         router.replace('/history');
@@ -127,11 +139,17 @@ function Page() {
 
           {/* Transaction Type Dropdown */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">
-              Transaction Type
-            </label>
+            <div className="flex space-x-10">
+              <label className="text-sm font-medium text-gray-700">
+                Transaction Type
+              </label>
+              <div>
+                <Switch onValueChange={(e) => handleAI(e)} size="sm" >Automatic Generate</Switch>
+              </div>
+            </div>
             <select
               {...register("type")}
+              disabled={generate}
               defaultValue="Investment"
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
             >
@@ -140,7 +158,6 @@ function Page() {
               <option value="Savings">Savings</option>
             </select>
           </div>
-
           {/* Amount Input */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
@@ -152,7 +169,7 @@ function Page() {
               </span>
               <input
                 type="number"
-                {...register("amount", { 
+                {...register("amount", {
                   required: "Amount is required",
                   min: { value: 0, message: "Amount must be positive" }
                 })}

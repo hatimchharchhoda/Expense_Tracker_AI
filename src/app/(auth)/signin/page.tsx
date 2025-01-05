@@ -62,6 +62,7 @@ export default function SignInForm() {
     if (session) {
       localStorage.setItem('session', JSON.stringify(session));
     }
+    console.log(session)
     console.log(localStorage.getItem('session'));
     router.refresh(); // Refresh the session-aware components
     router.replace('/');

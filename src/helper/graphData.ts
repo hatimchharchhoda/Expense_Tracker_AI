@@ -78,10 +78,8 @@ export function getLabels(transaction : any[], type: string) {
 
 export function getTotal(transactions: any[]): number {
     // Get the summed data from getSum function
-    const summedData = getSum(transactions);
-
+    const summedData = getSum(transactions,);
     // Sum up the 'total' values from the summed data
     const total = _.sumBy(summedData, 'total');
-    
     return total;
 }
