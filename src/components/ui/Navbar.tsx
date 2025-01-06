@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
 import { useSession, signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "@/store/authSlice";
 interface User {
   name?: string;
   image?: string;
@@ -23,32 +24,9 @@ const AcmeLogo = () => (
 
 export default function AppBar() {
   const { data: session } = useSession();
-  const [isClient, setIsClient] = useState(false);
-  const [authUser, setAuthUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    // Set isClient to true when component mounts
-    setIsClient(true);
-
-    // Try to get user from localStorage on mount
-    try {
-      const storedSession = localStorage.getItem('session');
-      if (storedSession) {
-        const { user } = JSON.parse(storedSession);
-        setAuthUser(user);
-      }
-    } catch (error) {
-      console.error('Error reading from localStorage:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Update localStorage and state when session changes
-    if (session?.user) {
-      localStorage.setItem('session', JSON.stringify(session));
-      setAuthUser(session.user);
-    }
-  }, [session]);
+  const user = useSelector((state : any) => (state.auth?.status))
+  const userData = useSelector((state : any) => (state.auth?.userData))
+  const dispatch = useDispatch()
 
   const handleLogout = async () => {
     try {
@@ -56,7 +34,7 @@ export default function AppBar() {
       localStorage.removeItem('dashboardCache');
       localStorage.removeItem('labelCache');
       localStorage.removeItem('transactionCache');
-      setAuthUser(null);
+      dispatch(logout());
       await signOut();
     } catch (error) {
       console.error('Error during logout:', error);
@@ -64,11 +42,11 @@ export default function AppBar() {
   };
 
   // Don't render anything until we're on the client
-  if (!isClient) {
+  if (!user) {
     return null;
   }
 
-  const isAuthenticated = !!authUser;
+  const isAuthenticated = user;
 
   return (
     <Navbar className="py-4 bg-white border-b border-gray-200 shadow-sm">
@@ -102,11 +80,11 @@ export default function AppBar() {
             <Link href="/profile" className="hover:opacity-80 transition-opacity">
               <Avatar className="ring-2 ring-gray-100">
                 <AvatarImage
-                  src={authUser?.image || ''}
-                  alt={authUser?.name || 'User'}
+                  src={userData?.image || ''}
+                  alt={userData?.name || 'User'}
                 />
                 <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {authUser?.username?.[0]?.toUpperCase() || 'U'}
+                  {userData?.username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
             </Link>

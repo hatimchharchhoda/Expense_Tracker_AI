@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Delete } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectItem } from "@nextui-org/select";
-
+import { useSelector } from 'react-redux';
 export const filterOptions = [
   { key: "default", label: "Default" },
   { key: "Expense", label: "Expenses" },
@@ -32,7 +32,7 @@ export default function List() {
   const [filtered, setFiltered] = useState<Transact[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
-
+  const user = useSelector((state:any) => (state.auth?.userData))
   // Cache duration (5 minutes)
   const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -99,21 +99,9 @@ export default function List() {
 
 
   const fetchTransactions = async () => {
-    const storedSession = localStorage.getItem('session');
-    if (!storedSession) {
-      toast({
-        title: 'Error',
-        description: "No session found. Please log in.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
-    }
 
     try {
-      const { user } = JSON.parse(storedSession);
-      const userId = user._id;
-      const response = await axios.post('/api/get-transaction', { user: userId });
+      const response = await axios.post('/api/get-transaction', { user: user.user._id});
       const fetchedTransactions = response.data.data;
 
       saveToCache(fetchedTransactions);

@@ -2,18 +2,20 @@
 import './globals.css';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-
+import { useSelector, useDispatch } from 'react-redux';
+import { login } from '@/store/authSlice';
 function Page() {
   const { data: session, status } = useSession();
-  const [localUser, setLocalUser] = useState(null);
+  const userStatus = useSelector((state: any) => state.auth.status);
 
+  const dispatch = useDispatch();
   useEffect(() => {
     // Check localStorage on component mount
     const storedSession = localStorage.getItem('session');
     if (storedSession) {
       try {
         const parsedSession = JSON.parse(storedSession);
-        setLocalUser(parsedSession.user);
+        dispatch(login(parsedSession))
       } catch (error) {
         console.error('Error parsing stored session:', error);
         localStorage.removeItem('session');
@@ -25,12 +27,12 @@ function Page() {
     // Update localStorage when session changes
     if (session) {
       localStorage.setItem('session', JSON.stringify(session));
-      setLocalUser(session.user);
+      dispatch(login(session))
     }
   }, [session]);
 
   // Show loading state only on initial load when no local data is available
-  if (status === 'loading' && !localUser) {
+  if (status === 'loading' && !userStatus) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <p className="text-gray-500">Loading...</p>
@@ -38,14 +40,14 @@ function Page() {
     );
   }
 
-  const isAuthenticated = session || localUser;
+  const isAuthenticated = session || userStatus;
 
   return (
     <div className="flex flex-col items-center py-8 h-screen">
       {isAuthenticated ? (
         <div className="py-4 px-8 bg-green-200 rounded-lg">
           <p className="text-green-800 font-semibold">
-            Welcome, {(localUser || session?.user)?.username || 'User'}!
+            Welcome, {(userStatus || session?.user)?.username || 'User'}!
           </p>
           <p>You are logged in.</p>
         </div>

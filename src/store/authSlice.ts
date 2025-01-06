@@ -1,36 +1,27 @@
-// authSlice.ts (redux slice)
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice } from "@reduxjs/toolkit";
+import { stat } from "fs";
 
 const initialState = {
-  session: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('session') || 'null') : null,
-  transactions: [],
-};
+    status : false,
+    userData: null
+}
 
 const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {
-    login: (state, action) => {
-      state.session = action.payload;
-      // Persist session in localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('session', JSON.stringify(action.payload));
-      }
-    },
-    logout: (state) => {
-      state.session = null;
-      state.transactions = [];
-      // Remove session from localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('session');
-      }
-    },
-    setTransactions: (state, action) => {
-      state.transactions = action.payload;
-    },
-  },
-});
+    name: "auth",   
+    initialState,
+    reducers: {
+        login: (state, action) => {
+            state.status = true;
+            state.userData = action.payload;
+            console.log(state.userData,state.status)
+        },
+        logout: (state) => {
+            state.status = false;
+            state.userData = null;
+        }
+     }
+})
 
-export const { login, logout, setTransactions } = authSlice.actions;
+export const {login, logout} = authSlice.actions;
 
 export default authSlice.reducer;

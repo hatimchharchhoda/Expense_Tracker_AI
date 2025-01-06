@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Label from '@/components/Labels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Chart as Area } from '@/components/AreaGraph';
+import { useSelector } from 'react-redux';
 // Register Chart.js components
 Chart.register(ArcElement)
 
@@ -28,8 +29,10 @@ function Page() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const user = useSelector((state:any) => (state.auth?.userData))
   const AreaData = transactions.map((transact) => {
     return {
+      transaction : transact.name,
       desktop: transact.amount,
     }});
 
@@ -68,18 +71,8 @@ function Page() {
   const fetchTransactions = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
-
-    const storedSession = localStorage.getItem('session');
-    if (!storedSession) {
-      setError("Session not found. Please log in.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { user } = JSON.parse(storedSession);
-      const userId = user._id;
-      const response = await axios.post('/api/get-transaction', { user: userId });
+      const response = await axios.post('/api/get-transaction', { user: user.user._id });
       const fetchedTransactions = response.data.data;
       
       setTransactions(fetchedTransactions);
