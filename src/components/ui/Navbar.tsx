@@ -24,34 +24,32 @@ const AcmeLogo = () => (
 
 export default function AppBar() {
   const { data: session } = useSession();
-  const user = useSelector((state : any) => (state.auth?.status))
-  const userData = useSelector((state : any) => (state.auth?.userData))
-  const dispatch = useDispatch()
+  const user = useSelector((state: any) => state.auth?.status);
+  const userData = useSelector((state: any) => state.auth?.userData);
+  const dispatch = useDispatch();
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('session');
-      localStorage.removeItem('dashboardCache');
-      localStorage.removeItem('labelCache');
-      localStorage.removeItem('transactionCache');
+      localStorage.removeItem("session");
+      localStorage.removeItem("dashboardCache");
+      localStorage.removeItem("labelCache");
+      localStorage.removeItem("transactionCache");
       dispatch(logout());
       await signOut();
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error("Error during logout:", error);
     }
   };
 
-  // Don't render anything until we're on the client
-  if (!user) {
-    return null;
-  }
-
-  const isAuthenticated = user;
+  const isAuthenticated = Boolean(user);
 
   return (
     <Navbar className="py-4 bg-white border-b border-gray-200 shadow-sm">
       <NavbarBrand>
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
           <AcmeLogo />
           <p className="font-bold text-inherit text-2xl">Expense Tracker</p>
         </Link>
@@ -61,9 +59,10 @@ export default function AppBar() {
         <>
           <NavbarContent className="hidden sm:flex gap-7" justify="center">
             {[
-              { path: '/dashboard', label: 'Dashboard' },
-              { path: '/add-transaction', label: 'Add Transaction' },
-              { path: '/history', label: 'History' }
+              { path: "/dashboard", label: "Dashboard" },
+              { path: "/add-transaction", label: "Add Transaction" },
+              { path: "/history", label: "History" },
+              { path: "/AI", label: "AI" },
             ].map((item) => (
               <NavbarItem key={item.path}>
                 <Link
@@ -80,11 +79,11 @@ export default function AppBar() {
             <Link href="/profile" className="hover:opacity-80 transition-opacity">
               <Avatar className="ring-2 ring-gray-100">
                 <AvatarImage
-                  src={userData?.image || ''}
-                  alt={userData?.name || 'User'}
+                  src={userData?.image || ""}
+                  alt={userData?.name || "User"}
                 />
                 <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {userData?.username?.[0]?.toUpperCase() || 'U'}
+                  {userData?.username?.[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
             </Link>

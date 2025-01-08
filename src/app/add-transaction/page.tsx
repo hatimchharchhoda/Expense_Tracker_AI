@@ -12,8 +12,8 @@ import { Switch } from "@nextui-org/switch";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Separate the AI initialization outside the component
-// const genAI = new GoogleGenerativeAI("AIzaSyAf61goeFziI7H9cMRqKFmzjT_YfRdyAQs");
-// const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const genAI = new GoogleGenerativeAI("AIzaSyAf61goeFziI7H9cMRqKFmzjT_YfRdyAQs");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Move color mapping outside component
 const transactionColors = {
@@ -38,6 +38,7 @@ function AddTransactionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, resetField, formState: { errors } } = useForm<TransactionFormData>();
   const [generate, setGenerate] = useState(false);
+  const [type, setType] = useState("Investment");
   const { toast } = useToast();
   const router = useRouter();
 
@@ -61,27 +62,28 @@ function AddTransactionPage() {
         return;
       }
 
-      // if (data.AI) {
-      //   const categories = [
-      //     "Food & Dining", "Shopping", "Transportation",
-      //     "Bills & Utilities", "Entertainment", "Healthcare",
-      //     "Travel", "Business", "Other"
-      //   ];
+      if (data.AI) {
+        const categories = [
+          "Food & Dining", "Shopping", "Transportation",
+          "Bills & Utilities", "Entertainment", "Healthcare",
+          "Travel", "Business", "Other"
+        ];
         
-      //   const prompt = `You have to categorize this expense : ${data.name} based on given ${categories} and answer in only one category`;
+        const prompt = `You have to categorize this expense : ${data.name} based on given ${categories} and answer in only one category`;
         
-      //   // try {
-      //   //   const result = await model.generateContent(prompt);
-      //   //   if(result.response.candidates){
-      //   //     const type = result.response.candidates[0].content.parts[0].text;
-      //   //     if(type){
-      //   //       data.type = type;
-      //   //     }
-      //   //   }
-      //   // } catch (error) {
-      //   //   console.error("Error making request:", error);
-      //   // }
-      // }
+        try {
+          const result = await model.generateContent(prompt);
+          if(result.response.candidates){
+            const type = result.response.candidates[0].content.parts[0].text;
+            if(type){
+              data.type = type;
+              setType(type);
+            }
+          }
+        } catch (error) {
+          console.error("Error making request:", error);
+        }
+      }
 
       const { user } = JSON.parse(storedSession);
       const transaction: Transaction = {
@@ -100,7 +102,7 @@ function AddTransactionPage() {
         });
         resetField("name");
         resetField("amount");
-        // router.replace('/history');
+        router.replace('/history');
       }
     } catch (error) {
       toast({
@@ -148,7 +150,7 @@ function AddTransactionPage() {
               <label className="text-sm font-medium text-gray-700">
                 Transaction Type
               </label>
-              {/* <div>
+              <div>
                 <Switch 
                   {...register("AI")} 
                   onValueChange={() => setGenerate(!generate)} 
@@ -156,12 +158,12 @@ function AddTransactionPage() {
                 >
                   Automatic Generate
                 </Switch>
-              </div> */}
+              </div>
             </div>
             <select
               {...register("type")}
               disabled={generate}
-              defaultValue="Investment"
+              defaultValue={type}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
             >
               <option value="Investment">Investment</option>

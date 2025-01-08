@@ -119,15 +119,13 @@ export default function List() {
   };
 
   useEffect(() => {
+    fetchTransactions()
     const cachedTransactions = getFromCache();
     if (cachedTransactions) {
       setTransactions(cachedTransactions);
       setFiltered(cachedTransactions);
       setLoading(false);
-      // Fetch in background to update cache
-      fetchTransactions();
-    } else {
-      fetchTransactions();
+      // Fetch in background to update cach
     }
   }, []);
 
