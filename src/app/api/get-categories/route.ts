@@ -1,7 +1,7 @@
 import dbConnect from '@/lib/dbConnect';
 import {Categories} from '@/models/model';
 
-export async function GET(request:Request) {
+export async function GET() {
   await dbConnect();
 
   try {

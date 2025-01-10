@@ -8,9 +8,17 @@ import Label from '@/components/Labels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Chart as Area } from '@/components/AreaGraph';
 import { useSelector } from 'react-redux';
+import { useMemo } from 'react';
+
 // Register Chart.js components
 Chart.register(ArcElement)
 
+export interface AuthState {
+  status: boolean;
+  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
+}
+
+// Use the defined type
 interface Transaction {
   _id: string;
   amount: number;
@@ -29,12 +37,14 @@ function Page() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const user = useSelector((state:any) => (state.auth?.userData))
+  const user = useSelector((state: any) => (state.auth?.userData))
+
   const AreaData = transactions.map((transact) => {
     return {
-      transaction : transact.name,
+      month : transact.name,
       desktop: transact.amount,
-    }});
+    }
+  });
 
   // Cache duration (2 minutes for dashboard data since it changes frequently)
   const CACHE_DURATION = 2 * 60 * 1000;
@@ -47,7 +57,7 @@ function Page() {
     localStorage.setItem('dashboardCache', JSON.stringify(cacheData));
   };
 
-  const getFromCache = (): Transaction[] | null => {
+  const getFromCache = useCallback((): Transaction[] | null => {
     try {
       const cachedData = localStorage.getItem('dashboardCache');
       if (!cachedData) return null;
@@ -66,7 +76,7 @@ function Page() {
       localStorage.removeItem('dashboardCache');
       return null;
     }
-  };
+  }, []);
 
   const fetchTransactions = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -83,7 +93,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.user._id]);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -103,7 +113,7 @@ function Page() {
     };
 
     initializeDashboard();
-  }, []);
+  }, [fetchTransactions, getFromCache]);
 
   // Loading state
   if (loading && transactions.length === 0) {

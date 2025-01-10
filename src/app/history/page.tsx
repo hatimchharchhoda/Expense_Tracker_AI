@@ -6,13 +6,12 @@ import { Delete } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectItem } from "@nextui-org/select";
 import { useSelector } from 'react-redux';
-export const filterOptions = [
-  { key: "default", label: "Default" },
-  { key: "Expense", label: "Expenses" },
-  { key: "Investment", label: "Investment" },
-  { key: "Savings", label: "Savings" },
-  { key: "Other", label: "Other" },
-];
+import { filterOptions } from '@/constants/filterOptions'
+
+export interface AuthState {
+  status: boolean;
+  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
+}
 
 interface Transact {
   _id: string;
@@ -32,7 +31,7 @@ export default function List() {
   const [filtered, setFiltered] = useState<Transact[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
-  const user = useSelector((state:any) => (state.auth?.userData))
+  const user = useSelector((state: { auth: AuthState })  => (state.auth?.userData))
   // Cache duration (5 minutes)
   const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -79,6 +78,7 @@ export default function List() {
         description: "Transaction not Deleted",
         variant: "destructive"
       });
+      throw error
     } finally {
       setLoading(false);
     }
@@ -113,6 +113,7 @@ export default function List() {
         description: "Failed to fetch transactions",
         variant: "destructive"
       });
+      throw error
     } finally {
       setLoading(false);
     }
@@ -127,7 +128,7 @@ export default function List() {
       setLoading(false);
       // Fetch in background to update cach
     }
-  }, []);
+  }, [fetchTransactions,getFromCache]);
 
   if (loading) {
     return (

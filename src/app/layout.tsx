@@ -5,7 +5,7 @@ import './globals.css';
 import AuthProvider from '../context/AuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 import ClientNavbar from '@/components/ClientNavbar';
-import { ThemeProvider } from 'next-themes';
+// import { ThemeProvider } from 'next-themes';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react'; // Import PersistGate
 import store ,{ persistor } from '@/store/store'; // Import both store and persistor

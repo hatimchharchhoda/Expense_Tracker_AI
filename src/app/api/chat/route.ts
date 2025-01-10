@@ -1,9 +1,10 @@
 import { streamText } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
+const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
 // Initialize Google Generative AI with the API key
 const google = createGoogleGenerativeAI({
-  apiKey: "AIzaSyAf61goeFziI7H9cMRqKFmzjT_YfRdyAQs",
+  apiKey
 });
 
 // Allow streaming responses up to 30 seconds

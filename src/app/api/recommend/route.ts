@@ -2,13 +2,15 @@ import { generateText } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { NextResponse } from 'next/server';
 
+const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+
 const google = createGoogleGenerativeAI({
-  apiKey: "AIzaSyAf61goeFziI7H9cMRqKFmzjT_YfRdyAQs",
+  apiKey
 });
 
 export const runtime = 'edge';
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const prompt =
       "Create a list of five Budget Recommendations formatted as a single string. Each recommendation should be separated by '||'. These recommendations are for users on an Expense Tracker Website.";
@@ -17,7 +19,6 @@ export async function POST(req: Request) {
       model: google("gemini-1.5-flash"),
       prompt,
     });
-    const formattedAnswer = answer.trim(); // Ensure no extra whitespace
     return NextResponse.json({ answer }); // Return as string
   } catch (error) {
     console.error("Error generating recommendations:", error);

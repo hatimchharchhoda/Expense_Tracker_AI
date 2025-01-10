@@ -5,11 +5,11 @@ export interface categories extends Document {
   color: string,
 }
 
-export interface User extends Document {
+export interface Usertype extends Document {
   username: string,
   email: string,
   password: string,
-  budget: Number
+  budget: number
 }
 
 // categories => field => ['type', 'color']
@@ -21,9 +21,9 @@ const categories_model: Schema<categories> = new mongoose.Schema({
 export interface transaction extends Document {
   name: string,
   type: string,
-  amount: Number,
-  color: String,
-  user : User,
+  amount: number,
+  color: string,
+  user : Usertype,
   date: Date
 }
 
@@ -39,7 +39,7 @@ const transaction_model : Schema<transaction> = new mongoose.Schema({
 
 
 
-const UserSchema: Schema<User> = new mongoose.Schema({
+const UserSchema: Schema<Usertype> = new mongoose.Schema({
     username: {
       type: String,
       required: [true, 'Username is required'],
@@ -63,8 +63,8 @@ const UserSchema: Schema<User> = new mongoose.Schema({
   });
 
 const UserModel =
-  (mongoose.models.User as mongoose.Model<User>) ||
-  mongoose.model<User>('User', UserSchema);
+  (mongoose.models.User as mongoose.Model<Usertype>) ||
+  mongoose.model<Usertype>('User', UserSchema);
 
 export default UserModel;
 

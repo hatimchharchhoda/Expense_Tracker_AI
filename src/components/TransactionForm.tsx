@@ -1,42 +1,50 @@
 import React from 'react'
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast"
-import dbConnect from '@/lib/dbConnect';
-import { transaction } from '@/models/model';
 import axios from 'axios';
 //import List from "./List"
 
+interface TransactionFormData {
+    name: string; // Name of the transaction (e.g., "Salary, House Rent, SIP")
+    type: "Investment" | "Expense" | "Savings"; // Type of transaction (dropdown options)
+    amount: string; // Amount entered as a string since it's from a text input
+}
+
 export default function Transactions() {
 
-    const { register, handleSubmit, resetField } = useForm();
-    //const [addTransaction] = 
-    // await dbConnect()
+    const { register, handleSubmit, resetField } = useForm<TransactionFormData>();
     const { toast } = useToast();
-    const onSubmit = async (data:any) => {
-        if (!data) return {};
+    const onSubmit = async (data: TransactionFormData) => {
+        if (!data) return;
+
         let color;
-        if(data.type == "Investment"){
-            color = '#FCBE44'
-        }else if(data.type == "Expense"){
-            color = '#ff0000'
-        }else{
-            color = "#90ee90";
+        if (data.type === "Investment") {
+            color = '#FCBE44';
+        } else if (data.type === "Expense") {
+            color = '#ff0000';
+        } else {
+            color = '#90ee90';
         }
+
         const send = {
-            "name" : data.name,
-            "type" : data.type,
-            "amount": data.amount,
-            color
-        }
-        await axios.post('/api/create-transaction', send )
+            name: data.name,
+            type: data.type,
+            amount: parseFloat(data.amount), // Convert amount to a number for better handling
+            color,
+        };
+
+        await axios.post('/api/create-transaction', send);
+
         toast({
             title: 'Success',
-            description: "Transaction Added Succesfully",
-            variant:"default"
-          });
+            description: "Transaction Added Successfully",
+            variant: "default",
+        });
+
         resetField('name');
         resetField('amount');
-    }
+    };
+
 
     return (
         <div className="form max-w-sm mx-auto w-96">

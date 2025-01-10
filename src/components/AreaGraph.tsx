@@ -6,7 +6,6 @@ import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -17,14 +16,15 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-const chartData = [
-  { month: "January", desktop: 186 },
-  { month: "February", desktop: 305 },
-  { month: "March", desktop: 237 },
-  { month: "April", desktop: 73 },
-  { month: "May", desktop: 209 },
-  { month: "June", desktop: 214 },
-]
+
+interface ChartDataItem {
+  month: string; // Month name (e.g., "January", "February")
+  desktop: number; // Numerical value for desktop data
+}
+
+interface ChartProps {
+  chartData: ChartDataItem[]; // Array of ChartDataItem
+}
 
 const chartConfig = {
   desktop: {
@@ -33,7 +33,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function Chart({chartData } : any) {
+export function Chart({chartData } : ChartProps) {
   return (
     <Card className="">
       <CardHeader>

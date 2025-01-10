@@ -110,6 +110,7 @@ function AddTransactionPage() {
         description: "Failed to add transaction. Please try again.",
         variant: "destructive",
       });
+      throw error
     } finally {
       setIsSubmitting(false);
     }

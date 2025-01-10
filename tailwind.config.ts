@@ -1,6 +1,5 @@
 import {nextui} from '@nextui-org/theme';
 import type { Config } from "tailwindcss";
-import {nextui} from "@nextui-org/react";
 import plugin from "tailwindcss/plugin";
 import { blackA, mauve, violet, indigo, purple } from "@radix-ui/colors";
 export default {

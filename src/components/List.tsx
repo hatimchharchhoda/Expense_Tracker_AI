@@ -3,7 +3,6 @@ import axios from 'axios';
 
 export default function List() {
   const [transactions, setTransactions] = useState([]);
-  const [isError, setIsError] = useState(false);
   console.log(transactions)
   // Fetch transactions on component mount
   useEffect(() => {
@@ -13,7 +12,6 @@ export default function List() {
         setTransactions(response.data.data); // Assuming response data contains the list
       } catch (error) {
         console.error(error);
-        setIsError(true);
       }
     };
 

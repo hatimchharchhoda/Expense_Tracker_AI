@@ -1,12 +1,18 @@
 'use client';
 import './globals.css';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { login } from '@/store/authSlice';
+
+export interface AuthState {
+  status: boolean;
+  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
+}
+
 function Page() {
   const { data: session, status } = useSession();
-  const userStatus = useSelector((state: any) => state.auth.status);
+  const userStatus = useSelector((state: { auth: AuthState })  => state.auth.status);
 
   const dispatch = useDispatch();
   useEffect(() => {
@@ -21,7 +27,7 @@ function Page() {
         localStorage.removeItem('session');
       }
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     // Update localStorage when session changes
@@ -29,7 +35,7 @@ function Page() {
       localStorage.setItem('session', JSON.stringify(session));
       dispatch(login(session))
     }
-  }, [session]);
+  }, [session,dispatch]);
 
   // Show loading state only on initial load when no local data is available
   if (status === 'loading' && !userStatus) {

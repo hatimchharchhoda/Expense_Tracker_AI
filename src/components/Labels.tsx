@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { getLabels } from '@/helper/graphData';
 
 interface Transaction {
+  _id : string,
+  name : string
   type: string;
-  amount: number;
+  amount: number,
+  date : Date,
   color: string;
 }
 
@@ -54,7 +57,7 @@ export default function Label() {
   };
 
   const processTransactions = (transactions: Transaction[]) => {
-    const labels = getLabels(transactions, 'type');
+    const labels = getLabels(transactions);
     setLabelData(labels);
     saveLabelDataToCache(labels);
   };
@@ -94,7 +97,7 @@ export default function Label() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [getLabelDataFromCache,processTransactions]);
 
   if (loading) {
     return (

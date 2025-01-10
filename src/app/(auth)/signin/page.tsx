@@ -17,11 +17,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInSchema } from '@/schemas/signInSchema';
-import { useSession } from 'next-auth/react';
 
 export default function SignInForm() {
   const router = useRouter();
-  const { data : session } = useSession();
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
     defaultValues: {

@@ -1,14 +1,12 @@
-import { useEffect, useState } from "react";
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
-import { useSession, signOut } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/authSlice";
-interface User {
-  name?: string;
-  image?: string;
-  username?: string;
-  _id?: string;
+
+export interface AuthState {
+  status: boolean;
+  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
 }
 
 const AcmeLogo = () => (
@@ -23,9 +21,8 @@ const AcmeLogo = () => (
 );
 
 export default function AppBar() {
-  const { data: session } = useSession();
-  const user = useSelector((state: any) => state.auth?.status);
-  const userData = useSelector((state: any) => state.auth?.userData);
+  const user = useSelector((state: { auth: AuthState }) => state.auth?.status);
+  const userData = useSelector((state: { auth: AuthState }) => state.auth?.userData);
   const dispatch = useDispatch();
 
   const handleLogout = async () => {

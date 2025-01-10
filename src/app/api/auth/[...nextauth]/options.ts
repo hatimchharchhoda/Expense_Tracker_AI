@@ -4,6 +4,17 @@ import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/dbConnect';
 import UserModel from '@/models/model';
 
+type Cred = Record<'email' | 'password', string>;
+
+type CustomUser = {
+  id: string; // Add the `id` field as required by next-auth
+  _id: string;
+  username: string;
+  email: string;
+  password: string;
+  budget?: number;
+};
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -13,29 +24,40 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'text' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials: any): Promise<any> {
+      async authorize(credentials: Cred | undefined): Promise<CustomUser | null> {
+        if (!credentials) {
+          throw new Error('Credentials are required.');
+        }
+
+        const { email, password } = credentials;
+
         await dbConnect();
+
         try {
           const user = await UserModel.findOne({
-            $or: [
-              { email: credentials.identifier },
-              { username: credentials.identifier },
-            ],
+            $or: [{ email: email }, { username: email }],
           });
+
           if (!user) {
-            throw new Error('No user found with this email');
+            throw new Error('No user found with this email or username.');
           }
-          const isPasswordCorrect = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
+
+          const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
           if (isPasswordCorrect) {
-            return user;
+            return {
+              id: user._id.toString(), // Map MongoDB `_id` to `id`
+              _id: user._id.toString(),
+              username: user.username,
+              email: user.email,
+              password: user.password,
+              budget: user.budget,
+            };
           } else {
-            throw new Error('Incorrect password');
+            throw new Error('Incorrect password.');
           }
-        } catch (err: any) {
-          throw new Error(err);
+        } catch (err) {
+          throw new Error('Authorization failed.');
         }
       },
     }),
@@ -43,17 +65,19 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token._id = user._id?.toString(); // Convert ObjectId to string
+        token._id = user._id?.toString();
+        token.id = user.id; // Ensure `id` is mapped in the token
         token.username = user.username;
-        token.budget = user.budget
+        token.budget = user.budget;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
         session.user._id = token._id;
+        session.user.id = token.id; // Ensure `id` is mapped in the session
         session.user.username = token.username;
-        token.budget = token.budget
+        session.user.budget = token.budget;
       }
       return session;
     },
