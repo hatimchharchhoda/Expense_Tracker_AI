@@ -139,7 +139,7 @@ function Page() {
   }
 
   return (
-    <div className="flex flex-row justify-center py-8 min-h-screen">
+    <div className="flex flex-col gap-5 justify-center py-8 min-h-screen md:flex-row">
       <div className='mx-auto min-w-[500px] min-h=[800px]'>
       <Area chartData = {AreaData} />
       </div>

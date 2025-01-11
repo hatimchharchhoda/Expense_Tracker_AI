@@ -1,8 +1,10 @@
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button, NavbarMenuToggle, NavbarMenu, NavbarMenuItem } from "@nextui-org/react";
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/authSlice";
+import { useState } from "react";
+import { profile } from "console";
 
 export interface AuthState {
   status: boolean;
@@ -24,6 +26,17 @@ export default function AppBar() {
   const user = useSelector((state: { auth: AuthState }) => state.auth?.status);
   const userData = useSelector((state: { auth: AuthState }) => state.auth?.userData);
   const dispatch = useDispatch();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const menuItems = [
+    { label: "Profile", href: '/profile' },
+    { label: "Dashboard", href: '/dashboard' },
+    { label: "Add Transaction", href: '/add-transaction' },
+    { label: "History", href: '/history' },
+    { label: "AI", href: '/AI' },
+    { label: "logout", href: '/logout' },
+  ];
+
 
   const handleLogout = async () => {
     try {
@@ -41,7 +54,11 @@ export default function AppBar() {
   const isAuthenticated = Boolean(user);
 
   return (
-    <Navbar className="py-4 bg-white border-b border-gray-200 shadow-sm">
+    <Navbar onMenuOpenChange={setIsMenuOpen} className="py-4 bg-white border-b border-gray-200 shadow-sm">
+      <NavbarMenuToggle
+        aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+        className="sm:hidden"
+      />
       <NavbarBrand>
         <Link
           href="/"
@@ -93,6 +110,27 @@ export default function AppBar() {
               Logout
             </Button>
           </NavbarContent>
+          <NavbarMenu className="py-10">
+            {menuItems.map((item, index) => (
+              <NavbarMenuItem key={`${item.label}-${index}`}>
+                <Link
+                  className="w-full"
+                  color={
+                    index === 2
+                      ? "primary"
+                      : index === menuItems.length - 1
+                        ? "danger"
+                        : "foreground"
+                  }
+                  href={item.href}
+                  size="lg"
+                >
+                  {item.label}
+                </Link>
+              </NavbarMenuItem>
+            ))}
+          </NavbarMenu>
+
         </>
       ) : (
         <NavbarContent justify="end" className="gap-4">
