@@ -128,7 +128,7 @@ export default function List() {
       setLoading(false);
       // Fetch in background to update cach
     }
-  }, [fetchTransactions,getFromCache]);
+  }, []);
 
   if (loading) {
     return (

@@ -1,4 +1,6 @@
 export const filterOptions = [
-    { key: "value1", label: "Label 1" },
-    { key: "value2", label: "Label 2" }
+  { key: "default", label: "Default" },
+    { key: "Investment", label: "Investment" },
+    { key: "Expense", label: "Expense" },
+    { key: "Savings", label: "Savings" },
   ] as const;
