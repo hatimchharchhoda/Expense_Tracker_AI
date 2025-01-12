@@ -13,7 +13,6 @@ export interface AuthState {
 function Page() {
   const { data: session, status } = useSession();
   const userStatus = useSelector((state: { auth: AuthState })  => state.auth.status);
-
   const dispatch = useDispatch();
   useEffect(() => {
     // Check localStorage on component mount
@@ -53,7 +52,7 @@ function Page() {
       {isAuthenticated ? (
         <div className="py-4 px-8 bg-green-200 rounded-lg">
           <p className="text-green-800 font-semibold">
-            Welcome, {(userStatus || session?.user)?.username || 'User'}!
+            Welcome, { (session?.user.username) || 'User'}!
           </p>
           <p>You are logged in.</p>
         </div>
