@@ -1,10 +1,11 @@
-import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button, NavbarMenuToggle, NavbarMenu, NavbarMenuItem } from "@nextui-org/react";
+import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button, NavbarMenuToggle, NavbarMenu, NavbarMenuItem, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
 import { signOut } from 'next-auth/react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/authSlice";
 import { useState } from "react";
 import { profile } from "console";
+import DropDown from "../dropDown";
 
 export interface AuthState {
   status: boolean;
@@ -25,6 +26,7 @@ const AcmeLogo = () => (
 export default function AppBar() {
   const user = useSelector((state: { auth: AuthState }) => state.auth?.status);
   const userData = useSelector((state: { auth: AuthState }) => state.auth?.userData);
+  console.log(userData)
   const dispatch = useDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -90,25 +92,26 @@ export default function AppBar() {
           </NavbarContent>
 
           <NavbarContent justify="end" className="flex items-center gap-4">
-            <Link href="/profile" className="hover:opacity-80 transition-opacity">
-              <Avatar className="ring-2 ring-gray-100">
-                <AvatarImage
-                  src={userData?.image || ""}
-                  alt={userData?.name || "User"}
-                />
-                <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {userData?.username?.[0]?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-            <Button
-              onPress={handleLogout}
-              className="mr-4 bg-blue-500 text-white px-6 py-2 rounded-lg 
-                       hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 
-                       transition-all duration-200 font-medium"
-            >
-              Logout
-            </Button>
+            <Dropdown>
+              <DropdownTrigger className="hover:cursor-pointer">
+                  <Avatar className="ring-2 ring-gray-100">
+                    <AvatarImage
+                      src={userData?.image || ""}
+                      alt={userData?.user.name || "User"}
+                    />
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      {userData?.user.username?.[0]?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="Static Actions">
+                  <DropdownItem key="profile" href="/profile" >Profile</DropdownItem>
+                  <DropdownItem key="logout" onPress={handleLogout} className="text-danger" color="danger">
+                    Logout
+                  </DropdownItem>
+                </DropdownMenu>
+             
+            </Dropdown>
           </NavbarContent>
           <NavbarMenu className="py-10">
             {menuItems.map((item, index) => (
@@ -130,7 +133,6 @@ export default function AppBar() {
               </NavbarMenuItem>
             ))}
           </NavbarMenu>
-
         </>
       ) : (
         <NavbarContent justify="end" className="gap-4">
