@@ -52,11 +52,15 @@ export default function SignInForm() {
         });
       }
     }
-    toast({
-      title: 'Login Successful',
-      description: 'Redirecting to home page',
-      variant: "default"
-    });
+    else{
+      router.replace('/');
+      toast({
+        title: 'Login Successful',
+        description: 'Redirecting to home page',
+        variant: "default"
+      });
+    }
+    
     const session = await getSession();
     if (session) {
       localStorage.setItem('session', JSON.stringify(session));
@@ -64,7 +68,6 @@ export default function SignInForm() {
     console.log(session)
     console.log(localStorage.getItem('session'));
     router.refresh(); // Refresh the session-aware components
-    router.replace('/');
   };
 
   return (
