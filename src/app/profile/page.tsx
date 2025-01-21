@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
-import { useSelector } from "react-redux"
-
+import { useSelector,useDispatch } from "react-redux"
+import { login } from '@/store/authSlice';
 export default function ProfilePage() {
+  const dispatch = useDispatch()
   const [budget, setBudget] = useState("")
   const user = useSelector((state: any) => (state.auth?.userData))
+  const [value, setValue] = useState(user.user.budget)
   // These would typically come from an API or context in a real app
   const userName = user.user.username
   const balance = 2500
@@ -24,13 +26,21 @@ export default function ProfilePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // In a real app, this would send the budget to an API
-    console.log(`New budget submitted: $${budget}`)
+    const updatedUser = { 
+        ...user, 
+        user: {
+          ...user.user,
+          budget: budget
+        }
+      };
+    dispatch(login(updatedUser))
+    setValue(budget)
     setBudget("")
   }
 
   const expenseData = [
     { name: "Spent", value: spentThisMonth, color: "#ef4444" },
-    { name: "Remaining", value: remainingBudget, color: "#22c55e" },
+    { name: "Remaining", value: (value-spentThisMonth), color: "#22c55e" },
   ]
 
   return (
@@ -44,14 +54,14 @@ export default function ProfilePage() {
           <CardContent className="space-y-4">
             <div>
               <Label>Current Balance</Label>
-              <p className="text-2xl font-bold">₹{balance.toLocaleString()}</p>
+              <p className="text-2xl font-bold">₹{(value-spentThisMonth).toLocaleString()}</p>
             </div>
             <div>
               <Label>Monthly Budget</Label>
-              <p className="text-xl">₹{monthlyBudget.toLocaleString()}</p>
+              <p className="text-xl">₹{value.toLocaleString()}</p>
               <Progress value={budgetProgress} className="mt-2" />
               <p className="text-sm text-muted-foreground mt-1">
-              ₹{spentThisMonth.toLocaleString()} spent of ₹{monthlyBudget.toLocaleString()}
+              ₹{spentThisMonth.toLocaleString()} spent of ₹{value.toLocaleString()}
               </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-2">
