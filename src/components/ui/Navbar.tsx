@@ -140,7 +140,7 @@ export default function AppBar() {
             href="/signup"
             className="px-6 py-2 bg-blue-500 text-white rounded-lg 
                      hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 
-                     transition-all duration-200 font-medium"
+                     transition-all duration-200 font-medium sm:block hidden"
           >
             Sign Up
           </Link>
