@@ -5,8 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Delete } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectItem } from "@nextui-org/select";
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { filterOptions } from '@/constants/filterOptions'
+import { login } from '@/store/authSlice';
 
 export interface AuthState {
   status: boolean;
@@ -27,6 +28,7 @@ interface CachedData {
 }
 
 export default function List() {
+  const dispatch = useDispatch()
   const [transactions, setTransactions] = useState<Transact[]>([]);
   const [filtered, setFiltered] = useState<Transact[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -56,16 +58,24 @@ export default function List() {
     return transactions;
   };
 
-  const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    const transactionId = e.currentTarget.id;
+  const handleClick = async (transactionId : string , transactionAmount : number) => {
     setLoading(true);
     try {
-      const del = await axios.delete(`/api/delete-transaction/${transactionId}`);
+      const del = await axios.post(`/api/delete-transaction/${transactionId}` , {userId : user.user._id,spent : transactionAmount} );
       if (del.status === 200) {
         const updatedTransactions = transactions.filter(t => t._id !== transactionId);
         setTransactions(updatedTransactions);
         saveToCache(updatedTransactions);
         setFiltered(updatedTransactions)
+        const updatedUser = {
+                      ...user,
+                      user: {
+                        ...user.user,
+                        spent: user.user.spent - transactionAmount
+                      }
+        
+                    }
+        dispatch(login(updatedUser));
         toast({
           title: 'Success',
           description: "Transaction Deleted",
@@ -179,7 +189,9 @@ export default function List() {
               <button
                 className="text-gray-500 hover:text-red-500 transition-colors"
                 id={transaction._id}
-                onClick={handleClick}
+                onClick={() => {
+                  handleClick(transaction._id , transaction.amount)
+                }}
                 disabled={loading}
               >
                 <Delete size={24} />

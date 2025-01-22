@@ -42,7 +42,7 @@ function AddTransactionPage() {
   const { register, handleSubmit, resetField, formState: { errors } } = useForm<TransactionFormData>();
   const [generate, setGenerate] = useState(false);
   const [type, setType] = useState("Investment");
-  const userData = useSelector((state : any) => state.auth?.userData);
+  const userData = useSelector((state: any) => state.auth?.userData);
   const { toast } = useToast();
   const router = useRouter();
   const userId = userData?.user._id
@@ -54,7 +54,6 @@ function AddTransactionPage() {
   const onSubmit = useCallback(async (data: TransactionFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       const storedSession = localStorage.getItem('session');
       if (!storedSession) {
@@ -95,7 +94,14 @@ function AddTransactionPage() {
         user: user._id,
         color: getTransactionColor(data.type)
       };
-
+      // if((transaction.amount + userData.user.spent) > userData.user.budget){
+      //   toast({
+      //     title: "Error",
+      //     description: "Amount excedds budget",
+      //     variant: "destructive",
+      //   });
+      //   throw "Amount exceeds budget"
+      // }
       const response = await axios.post("/api/create-transaction", transaction);
 
       if (response.status === 200) {
@@ -120,11 +126,11 @@ function AddTransactionPage() {
           if (data.success) {
             const updatedUser = {
               ...userData,
-              user:{
+              user: {
                 ...user,
-                 spent: data.user.spent
+                spent: data.user.spent
               }
-                
+
             }
             console.log(updatedUser)
             dispatch(login(updatedUser));
@@ -138,11 +144,13 @@ function AddTransactionPage() {
         router.replace('/history');
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add transaction. Please try again.",
-        variant: "destructive",
-      });
+      if(error != "Amount exceeds budget"){
+        toast({
+          title: "Error",
+          description: "Failed to add transaction. Please try again.",
+          variant: "destructive",
+        });
+      }
       throw error
     } finally {
       setIsSubmitting(false);
