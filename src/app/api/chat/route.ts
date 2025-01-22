@@ -2,31 +2,36 @@ import { streamText } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
 const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-// Initialize Google Generative AI with the API key
 const google = createGoogleGenerativeAI({
   apiKey
 });
 
-// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
+
+const FINANCE_SYSTEM_PROMPT = `You are a financial assistant specializing in budgeting and expense management. Format your responses as follows:
+
+• For general advice: Use short bullet points starting with "•"
+• For budgeting breakdowns: Use this exact format:
+  1. Essential Expenses (50%): [brief details]
+  2. Non-Essential Spending (30%): [brief details]
+  3. Savings & Debt (20%): [brief details]
+
+Keep responses under 3-4 points total. Be direct and specific with numbers.`;
 
 export async function POST(req: Request) {
   try {
-    // Parse incoming request JSON
     const { messages } = await req.json();
     console.log('Received messages:', messages);
 
-    // Start streaming text from Google Generative AI
     const result = streamText({
-      model: google("models/gemini-1.5-pro-latest"), // Specify the model correctly
-      system: 'You are a helpful assistant.',
+      model: google("models/gemini-1.5-pro-latest"),
+      system: FINANCE_SYSTEM_PROMPT,
       messages,
+      temperature: 0.7,
+      maxTokens: 150,
     });
 
-    // Log the result object for debugging
     console.log('Streaming result initialized:', result);
-
-    // Return the response as a data stream
     return result.toDataStreamResponse();
   } catch (error) {
     console.error('Error handling POST request:', error);
