@@ -9,7 +9,8 @@ export interface Usertype extends Document {
   username: string,
   email: string,
   password: string,
-  budget: number
+  budget: number,
+  spent : number
 }
 
 // categories => field => ['type', 'color']
@@ -57,6 +58,10 @@ const UserSchema: Schema<Usertype> = new mongoose.Schema({
       required: [true, 'Password is required'],
     },
     budget: {
+        type: Number,
+        default: 0
+      },
+    spent: {
         type: Number,
         default: 0
       },

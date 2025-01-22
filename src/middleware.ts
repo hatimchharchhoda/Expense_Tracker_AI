@@ -8,7 +8,8 @@ export const config = {
       '/signup',
       '/dashboard', 
       '/add-transaction', 
-      '/history'
+      '/history',
+      '/profile'
     ],
   };
   
@@ -20,7 +21,8 @@ export async function middleware(request: NextRequest) {
   if (!token && 
     (url.pathname.startsWith('/dashboard') ||
       url.pathname.startsWith('/add-transaction') ||
-      url.pathname.startsWith('/history')) ){
+      url.pathname.startsWith('/history') || 
+      url.pathname.startsWith('/profile')) ){
     return NextResponse.redirect(new URL('/signin', request.url));
   }
   

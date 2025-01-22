@@ -9,33 +9,51 @@ import { Progress } from "@/components/ui/progress"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { useSelector,useDispatch } from "react-redux"
 import { login } from '@/store/authSlice';
+
 export default function ProfilePage() {
   const dispatch = useDispatch()
   const [budget, setBudget] = useState("")
   const user = useSelector((state: any) => (state.auth?.userData))
-  const [value, setValue] = useState(user.user.budget)
+  const [value, setValue] = useState(user?.user.budget)
   // These would typically come from an API or context in a real app
   const userName = user.user.username
-  const balance = 2500
+  const userId = user.user._id
   const monthlyBudget = 3000
-  const spentThisMonth = 1800
+  const spentThisMonth = user.user.spent
 
-  const remainingBudget = monthlyBudget - spentThisMonth
   const budgetProgress = (spentThisMonth / monthlyBudget) * 100
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, this would send the budget to an API
-    const updatedUser = { 
-        ...user, 
-        user: {
-          ...user.user,
+    try {
+      const response = await fetch('/api/add-budget', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
           budget: budget
-        }
-      };
-    dispatch(login(updatedUser))
-    setValue(budget)
-    setBudget("")
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const updatedUser = { 
+          ...user, 
+          user: {
+            ...user.user,
+            budget: budget
+          }
+        };
+        dispatch(login(updatedUser));
+        setValue(budget);
+        setBudget("");
+      }
+    } catch (error) {
+      console.error('Failed to update budget:', error);
+    }
   }
 
   const expenseData = [

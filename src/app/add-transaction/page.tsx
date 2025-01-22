@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@nextui-org/switch";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useDispatch, useSelector } from "react-redux";
+import { AuthState, login } from "@/store/authSlice";
 
 // Separate the AI initialization outside the component
 const genAI = new GoogleGenerativeAI("AIzaSyAf61goeFziI7H9cMRqKFmzjT_YfRdyAQs");
@@ -35,13 +37,15 @@ interface Transaction extends TransactionFormData {
 }
 
 function AddTransactionPage() {
+  const dispatch = useDispatch()
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, resetField, formState: { errors } } = useForm<TransactionFormData>();
   const [generate, setGenerate] = useState(false);
   const [type, setType] = useState("Investment");
+  const userData = useSelector((state : any) => state.auth?.userData);
   const { toast } = useToast();
   const router = useRouter();
-
+  const userId = userData?.user._id
   // Memoize the color getter function
   const getTransactionColor = useCallback((type: string): string => {
     return transactionColors[type as keyof typeof transactionColors] || "#01F4FC";
@@ -50,7 +54,7 @@ function AddTransactionPage() {
   const onSubmit = useCallback(async (data: TransactionFormData) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    
+
     try {
       const storedSession = localStorage.getItem('session');
       if (!storedSession) {
@@ -68,14 +72,14 @@ function AddTransactionPage() {
           "Bills & Utilities", "Entertainment", "Healthcare",
           "Travel", "Business", "Other"
         ];
-        
+
         const prompt = `You have to categorize this expense : ${data.name} based on given ${categories} and answer in only one category`;
-        
+
         try {
           const result = await model.generateContent(prompt);
-          if(result.response.candidates){
+          if (result.response.candidates) {
             const type = result.response.candidates[0].content.parts[0].text;
-            if(type){
+            if (type) {
               data.type = type;
               setType(type);
             }
@@ -100,6 +104,35 @@ function AddTransactionPage() {
           description: "Transaction added successfully",
           variant: "default",
         });
+        try {
+          const response = await fetch('/api/add-spent', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userId,
+              spent: transaction.amount
+            }),
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            const updatedUser = {
+              ...userData,
+              user:{
+                ...user,
+                 spent: data.user.spent
+              }
+                
+            }
+            console.log(updatedUser)
+            dispatch(login(updatedUser));
+          }
+        } catch {
+          console.log("error adding spent")
+        }
+
         resetField("name");
         resetField("amount");
         router.replace('/history');
@@ -152,9 +185,9 @@ function AddTransactionPage() {
                 Transaction Type
               </label>
               <div>
-                <Switch 
-                  {...register("AI")} 
-                  onValueChange={() => setGenerate(!generate)} 
+                <Switch
+                  {...register("AI")}
+                  onValueChange={() => setGenerate(!generate)}
                   size="sm"
                 >
                   Automatic Generate

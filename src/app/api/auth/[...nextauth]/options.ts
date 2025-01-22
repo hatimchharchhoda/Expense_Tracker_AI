@@ -13,6 +13,7 @@ type CustomUser = {
   email: string;
   password: string;
   budget?: number;
+  spent?:number;
 };
 
 export const authOptions: NextAuthOptions = {
@@ -52,6 +53,7 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               password: user.password,
               budget: user.budget,
+              spent : user.spent,
             };
           } else {
             throw new Error('Incorrect password.');
@@ -69,6 +71,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id; // Ensure `id` is mapped in the token
         token.username = user.username;
         token.budget = user.budget;
+        token.spent = user.spent;
       }
       return token;
     },
@@ -78,6 +81,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id; // Ensure `id` is mapped in the session
         session.user.username = token.username;
         session.user.budget = token.budget;
+        session.user.spent = token.spent;
       }
       return session;
     },

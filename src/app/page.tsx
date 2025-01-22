@@ -32,6 +32,7 @@ function Page() {
     // Update localStorage when session changes
     if (session) {
       localStorage.setItem('session', JSON.stringify(session));
+      console.log(session.user)
       dispatch(login(session))
     }
   }, [session,dispatch]);

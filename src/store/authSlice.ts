@@ -6,6 +6,7 @@ export interface User {
   username: string;
   email: string;
   budget: number;
+  spent : number;
 }
 
 // Define the type for the state
