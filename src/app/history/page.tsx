@@ -2,16 +2,23 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useToast } from "@/hooks/use-toast";
-import { Delete } from 'lucide-react';
+import { Delete, Calendar } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectItem } from "@nextui-org/select";
 import { useDispatch, useSelector } from 'react-redux';
 import { filterOptions } from '@/constants/filterOptions'
 import { login } from '@/store/authSlice';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export interface AuthState {
   status: boolean;
-  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
+  userData: any | null;
 }
 
 interface Transact {
@@ -32,9 +39,12 @@ export default function List() {
   const [transactions, setTransactions] = useState<Transact[]>([]);
   const [filtered, setFiltered] = useState<Transact[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [downloadLoading, setDownloadLoading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const { toast } = useToast();
   const user = useSelector((state: { auth: AuthState })  => (state.auth?.userData))
-  // Cache duration (5 minutes)
   const CACHE_DURATION = 5 * 60 * 1000;
 
   const saveToCache = (transactions: Transact[]) => {
@@ -58,6 +68,56 @@ export default function List() {
     return transactions;
   };
 
+  const handleDownload = async () => {
+    try {
+      setDownloadLoading(true);
+      setDownloadError('');
+
+      // Validate dates
+      if (!startDate || !endDate) {
+        throw new Error('Please select both start and end dates');
+      }
+
+      if (new Date(startDate) > new Date(endDate)) {
+        throw new Error('Start date must be before end date');
+      }
+
+      const response = await axios.post('/api/download_transaction', {
+        userId: user.user._id,
+        startDate,
+        endDate,
+      }, {
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `transactions-${startDate}-to-${endDate}.xlsx`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Success',
+        description: "Transactions downloaded successfully",
+        variant: "default"
+      });
+    } catch (err: any) {
+      setDownloadError(err.message);
+      toast({
+        title: 'Failed',
+        description: "Failed to download transactions",
+        variant: "destructive"
+      });
+    } finally {
+      setDownloadLoading(false);
+    }
+  };
+
   const handleClick = async (transactionId : string , transactionAmount : number) => {
     setLoading(true);
     try {
@@ -68,13 +128,12 @@ export default function List() {
         saveToCache(updatedTransactions);
         setFiltered(updatedTransactions)
         const updatedUser = {
-                      ...user,
-                      user: {
-                        ...user.user,
-                        spent: user.user.spent - transactionAmount
-                      }
-        
-                    }
+          ...user,
+          user: {
+            ...user.user,
+            spent: user.user.spent - transactionAmount
+          }
+        }
         dispatch(login(updatedUser));
         toast({
           title: 'Success',
@@ -93,6 +152,7 @@ export default function List() {
       setLoading(false);
     }
   };
+
   const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
     const selectedValue = event.target.value;
 
@@ -100,23 +160,18 @@ export default function List() {
       setFiltered(transactions);
       return;
     }
-    // Filter transactions based on selected value
     const filteredTransactions = transactions.filter((transaction) => transaction.type === selectedValue);
-
-    // Update the state with the filtered transactions
     setFiltered(filteredTransactions);
   };
 
-
   const fetchTransactions = async () => {
-
     try {
       const response = await axios.post('/api/get-transaction', { user: user.user._id});
       const fetchedTransactions = response.data.data;
 
       saveToCache(fetchedTransactions);
       setTransactions(fetchedTransactions);
-      setFiltered(fetchedTransactions); // Update filtered state with new transactions
+      setFiltered(fetchedTransactions);
     } catch (error) {
       toast({
         title: 'Error',
@@ -136,7 +191,6 @@ export default function List() {
       setTransactions(cachedTransactions);
       setFiltered(cachedTransactions);
       setLoading(false);
-      // Fetch in background to update cach
     }
   }, []);
 
@@ -167,6 +221,59 @@ export default function List() {
         >
           {(option) => <SelectItem>{option.label}</SelectItem>}
         </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline">Download</Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <div className="space-y-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Download Transactions
+              </h3>
+              
+              <div className="space-y-2">
+                <label htmlFor="startDate" className="text-sm font-medium">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  id="startDate"
+                  className="w-full px-3 py-2 border rounded-md"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="endDate" className="text-sm font-medium">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  id="endDate"
+                  className="w-full px-3 py-2 border rounded-md"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+
+              {downloadError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{downloadError}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                onClick={handleDownload}
+                disabled={downloadLoading || !startDate || !endDate}
+                className="w-full"
+              >
+                {downloadLoading ? 'Downloading...' : 'Download Excel'}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
       {filtered.length === 0 && transactions.length == 0 ? (
         <h1 className="text-2xl font-bold text-gray-700 text-center mt-20">
