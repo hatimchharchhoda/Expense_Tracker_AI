@@ -48,6 +48,7 @@ export default function List() {
   const [endDate, setEndDate] = useState('');
   const [timeFrame, setTimeFrame] = useState('');
   const { toast } = useToast();
+  const [selectedCategory, setSelectedCategory] = useState('default');
   const user = useSelector((state: { auth: AuthState }) => state.auth?.userData);
 
   const filterByTimeFrame = (transactionsToFilter: Transact[]) => {
@@ -69,13 +70,6 @@ export default function List() {
     }
 
     return transactionsToFilter.filter(t => new Date(t.date) >= filterDate);
-  };
-
-  const handleTimeFrameChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
-    const newTimeFrame = event.target.value;
-    setTimeFrame(newTimeFrame);
-    const timeFiltered = filterByTimeFrame(transactions);
-    setFiltered(timeFiltered);
   };
 
   const handleDownload = async () => {
@@ -162,18 +156,22 @@ export default function List() {
     }
   };
 
-  const handleCategoryChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
-    const selectedValue = event.target.value;
-    let filteredTransactions = transactions;
+  useEffect(() => {
+    let updatedTransactions = transactions;
 
-    if (selectedValue !== "default") {
-      filteredTransactions = transactions.filter((transaction) => 
-        transaction.type === selectedValue
-      );
+    if (selectedCategory !== "default") {
+      updatedTransactions = transactions.filter(t => t.type === selectedCategory);
     }
 
-    const timeFiltered = filterByTimeFrame(filteredTransactions);
-    setFiltered(timeFiltered);
+    setFiltered(filterByTimeFrame(updatedTransactions));
+  }, [timeFrame, selectedCategory, transactions]);
+
+  const handleTimeFrameChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
+    setTimeFrame(event.target.value);
+  };
+
+  const handleCategoryChange: React.ChangeEventHandler<HTMLSelectElement> = (event) => {
+    setSelectedCategory(event.target.value);
   };
 
   useEffect(() => {
