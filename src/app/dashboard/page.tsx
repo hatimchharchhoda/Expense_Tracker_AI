@@ -7,25 +7,25 @@ import { useCallback, useEffect, useState } from 'react';
 import Label from '@/components/Labels';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Chart as Area } from '@/components/AreaGraph';
-import { useSelector } from 'react-redux';
-import { useMemo } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { login } from "@/store/authSlice";
+import { useSession } from "next-auth/react";
 
 // Register Chart.js components
 Chart.register(ArcElement)
 
 export interface AuthState {
   status: boolean;
-  userData: any | null; // Replace `any` with a more specific type if you know the structure of userData
+  userData: any | null;
 }
 
-// Use the defined type
 interface Transaction {
   _id: string;
   amount: number;
   type: string;
   name: string;
   color: string;
-  date : Date;
+  date: Date;
 }
 
 interface CachedDashboardData {
@@ -37,11 +37,47 @@ function Page() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const user = useSelector((state: any) => (state.auth?.userData))
+  const { data: session, status: sessionStatus } = useSession();
+  const dispatch = useDispatch();
+  const user = useSelector((state: any) => state.auth?.userData || {});
 
-  const AreaData = transactions.map((transact) => {
+  // Add authentication setup from landing page
+  useEffect(() => {
+    // Check localStorage on component mount
+    const storedSession = localStorage.getItem('session');
+    if (storedSession) {
+      try {
+        const parsedSession = JSON.parse(storedSession);
+        dispatch(login(parsedSession));
+      } catch (error) {
+        console.error('Error parsing stored session:', error);
+        localStorage.removeItem('session');
+      }
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Update localStorage when session changes
+    if (session) {
+      localStorage.setItem('session', JSON.stringify(session));
+      dispatch(login(session));
+    }
+  }, [session, dispatch]);
+
+  // Show initial loading state
+  if (sessionStatus === 'loading' && !user?.user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-600">Loading your financial dashboard...</p>
+      </div>
+    );
+  }
+
+  let expenseTrans = transactions.filter(transact => transact.type === 'Expense');
+  const AreaData = expenseTrans.map((transact) => {
     return {
-      month : transact.name,
+      month: transact.name,
       desktop: transact.amount,
     }
   });
@@ -81,10 +117,18 @@ function Page() {
   const fetchTransactions = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError(null);
+  
+    // Check if user or user.user is undefined/null
+    if (!user || !user.user || !user.user._id) {
+      console.error("User ID is undefined. Skipping transaction fetch.");
+      setLoading(false);
+      return;
+    }
+  
     try {
       const response = await axios.post('/api/get-transaction', { user: user.user._id });
       const fetchedTransactions = response.data.data;
-      
+  
       setTransactions(fetchedTransactions);
       saveToCache(fetchedTransactions);
     } catch (error) {
@@ -93,27 +137,31 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [user.user._id]);
+  }, [user?.user?._id]);
+  
 
   useEffect(() => {
-    const initializeDashboard = async () => {
-      // Try to get data from cache first
-      const cachedTransactions = getFromCache();
-      
-      if (cachedTransactions) {
-        // If we have cached data, show it immediately
-        setTransactions(cachedTransactions);
-        setLoading(false);
-        // Fetch fresh data in background
-        fetchTransactions(false);
-      } else {
-        // If no cache, fetch fresh data
-        fetchTransactions(true);
-      }
-    };
+    // Only fetch transactions when we have user data
+    if (user?.user?._id) {
+      const initializeDashboard = async () => {
+        // Try to get data from cache first
+        const cachedTransactions = getFromCache();
+        
+        if (cachedTransactions) {
+          // If we have cached data, show it immediately
+          setTransactions(cachedTransactions);
+          setLoading(false);
+          // Fetch fresh data in background
+          fetchTransactions(false);
+        } else {
+          // If no cache, fetch fresh data
+          fetchTransactions(true);
+        }
+      };
 
-    initializeDashboard();
-  }, [fetchTransactions, getFromCache]);
+      initializeDashboard();
+    }
+  }, [fetchTransactions, getFromCache, user?.user?._id]);
 
   // Loading state
   if (loading && transactions.length === 0) {

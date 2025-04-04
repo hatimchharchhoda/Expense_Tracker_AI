@@ -6,6 +6,7 @@ import { logout } from "@/store/authSlice";
 import { useState } from "react";
 import { profile } from "console";
 import DropDown from "../dropDown";
+import { useRouter } from "next/navigation";
 
 export interface AuthState {
   status: boolean;
@@ -29,7 +30,7 @@ export default function AppBar() {
   console.log(userData)
   const dispatch = useDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+  const router = useRouter();
   const menuItems = [
     { label: "Profile", href: '/profile' },
     { label: "Dashboard", href: '/dashboard' },
@@ -63,7 +64,7 @@ export default function AppBar() {
       />
       <NavbarBrand>
         <Link
-          href="/"
+          href={"/"}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <AcmeLogo />

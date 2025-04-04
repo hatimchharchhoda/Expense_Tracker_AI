@@ -17,9 +17,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInSchema } from '@/schemas/signInSchema';
+import { useState } from 'react';
 
 export default function SignInForm() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
@@ -28,46 +32,48 @@ export default function SignInForm() {
     },
   });
 
-  const { toast } = useToast();
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
-    console.log(data)
+    setLoading(true);
+    console.log(data);
+    
     const result = await signIn('credentials', {
       redirect: false,
       email: data.identifier,
       password: data.password,
     });
+
     console.log(result);
+    
     if (result?.error) {
-      if (result.error === 'CredentialsSignin') {
-        toast({
-          title: 'Login Failed',
-          description: 'Incorrect username or password',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: result.error,
-          variant: 'destructive',
-        });
-      }
-    }
-    else{
-      router.replace('/');
+      setLoading(false); // Reset loading on error
+      toast({
+        title: 'Login Failed',
+        description:
+          result.error === 'CredentialsSignin'
+            ? 'Incorrect username or password'
+            : result.error,
+        variant: 'destructive',
+      });
+    } else {
       toast({
         title: 'Login Successful',
-        description: 'Redirecting to home page',
-        variant: "default"
+        description: 'Redirecting to home page...',
+        variant: 'default',
       });
+
+      const session = await getSession();
+      if (session) {
+        localStorage.setItem('session', JSON.stringify(session));
+      }
+
+      console.log(session);
+      console.log(localStorage.getItem('session'));
+
+      router.replace('/');
+      router.refresh();
     }
-    
-    const session = await getSession();
-    if (session) {
-      localStorage.setItem('session', JSON.stringify(session));
-    }
-    console.log(session)
-    console.log(localStorage.getItem('session'));
-    router.refresh(); // Refresh the session-aware components
+
+    setLoading(false);
   };
 
   return (
@@ -112,9 +118,33 @@ export default function SignInForm() {
             />
             <Button
               type="submit"
-              className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
+              className="w-full flex items-center justify-center bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
+              disabled={loading}
             >
-              Sign In
+              {loading ? (
+                <svg
+                  className="w-5 h-5 mr-2 animate-spin text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3.536-3.536A8 8 0 0112 20v-4l-3.536 3.536A8 8 0 014 12z"
+                  ></path>
+                </svg>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
         </Form>
