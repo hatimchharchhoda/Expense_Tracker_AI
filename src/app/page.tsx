@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux"
 import { login } from "@/store/authSlice"
 import Link from "next/link"
 import Image from "next/image"
+import AddToHomeButton from "@/components/InstallPWA";
 import { Button } from "@/components/ui/button"
 import { BentoGrid, BentoGridItem } from "@/components/ui/bento-grid"
 import { ArrowRight, PieChart, BarChart3, Wallet, TrendingUp, MessageSquare, CheckCircle2, Menu, X } from "lucide-react"
@@ -131,8 +132,9 @@ export default function Page() {
   const isAuthenticated = session || userStatus;
 
   return (
-    <div className="min-h-screen flex flex-col">
 
+    <div className="min-h-screen flex flex-col">
+      <AddToHomeButton />
 
       <main className="flex-grow">
         {/* Hero Section */}
