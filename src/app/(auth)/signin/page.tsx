@@ -18,6 +18,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { signInSchema } from '@/schemas/signInSchema';
 import { useState } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -34,15 +36,12 @@ export default function SignInForm() {
 
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
     setLoading(true);
-    console.log(data);
     
     const result = await signIn('credentials', {
       redirect: false,
       email: data.identifier,
       password: data.password,
     });
-
-    console.log(result);
     
     if (result?.error) {
       setLoading(false); // Reset loading on error
@@ -57,7 +56,7 @@ export default function SignInForm() {
     } else {
       toast({
         title: 'Login Successful',
-        description: 'Redirecting to home page...',
+        description: 'Redirecting to dashboard...',
         variant: 'default',
       });
 
@@ -65,9 +64,6 @@ export default function SignInForm() {
       if (session) {
         localStorage.setItem('session', JSON.stringify(session));
       }
-
-      console.log(session);
-      console.log(localStorage.getItem('session'));
 
       router.replace('/');
       router.refresh();
@@ -77,84 +73,110 @@ export default function SignInForm() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-800 tracking-tight lg:text-5xl mb-6">
-            Welcome Back
-          </h1>
-          <p className="text-gray-600">Sign in to continue</p>
-        </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              name="identifier"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700">Email/Username</FormLabel>
-                  <Input
-                    {...field}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-green-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md relative">
+          {/* Decorative elements */}
+          <div className="absolute -z-10 -top-6 -right-6 w-20 h-20 bg-teal-200 dark:bg-teal-900/30 rounded-full mix-blend-multiply filter blur-xl opacity-70"></div>
+          <div className="absolute -z-10 -bottom-6 -left-6 w-20 h-20 bg-blue-200 dark:bg-blue-900/30 rounded-full mix-blend-multiply filter blur-xl opacity-70"></div>
+          
+          <div className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 mb-6 bg-gradient-to-br from-blue-400 to-teal-500 dark:from-blue-500 dark:to-teal-600 rounded-full">
+                  <Lock className="h-8 w-8 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-foreground">
+                  Welcome Back
+                </h1>
+                <p className="mt-2 text-muted-foreground">
+                  Sign in to your account
+                </p>
+              </div>
+              
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                  <FormField
+                    name="identifier"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center text-foreground font-medium">
+                          <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Email or Username
+                        </FormLabel>
+                        <Input
+                          {...field}
+                          className="bg-background border-input"
+                          placeholder="your@email.com"
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              name="password"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700">Password</FormLabel>
-                  <Input
-                    type="password"
-                    {...field}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  
+                  <FormField
+                    name="password"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="flex items-center text-foreground font-medium">
+                            <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
+                            Password
+                          </FormLabel>
+                          <Link 
+                            href="#" 
+                            className="text-sm font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
+                          >
+                            Forgot password?
+                          </Link>
+                        </div>
+                        <Input
+                          type="password"
+                          {...field}
+                          className="bg-background border-input"
+                          placeholder="••••••••"
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button
-              type="submit"
-              className="w-full flex items-center justify-center bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 transition-all"
-              disabled={loading}
-            >
-              {loading ? (
-                <svg
-                  className="w-5 h-5 mr-2 animate-spin text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v4l3.536-3.536A8 8 0 0112 20v-4l-3.536 3.536A8 8 0 014 12z"
-                  ></path>
-                </svg>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-          </form>
-        </Form>
-        <div className="text-center mt-4">
-          <p className="text-gray-600">
-            Not a member yet?{' '}
-            <Link href="/signup" className="text-blue-500 hover:text-blue-700">
-              Sign up
-            </Link>
-          </p>
+                  
+                  <Button
+                    type="submit"
+                    className="w-full mt-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-semibold py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Sign In'
+                    )}
+                  </Button>
+                </form>
+              </Form>
+              
+              <div className="mt-8 pt-6 border-t border-border text-center">
+                <p className="text-muted-foreground">
+                  Don't have an account?{' '}
+                  <Link 
+                    href="/signup" 
+                    className="font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 transition-colors"
+                  >
+                    Sign up
+                  </Link>
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,39 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-export { default } from 'next-auth/middleware';
-
 export const config = {
-    matcher: [
-      '/',
-      '/signin', 
-      '/signup',
-      '/dashboard', 
-      '/add-transaction', 
-      '/history',
-      '/profile'
-    ],
+  matcher: [
+    '/',
+    '/signin', 
+    '/signup',
+    '/dashboard', 
+    '/add-transaction', 
+    '/history',
+    '/profile',
+    '/budget',
+    '/AI'
+  ],
 };
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
+  // Get the pathname from the request
+  const { pathname } = request.nextUrl;
+  
+  // Get the token
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET 
+  });
 
-  if (!token) {
-    // Redirect unauthenticated users trying to access protected routes
-    if (request.nextUrl.pathname.startsWith('/dashboard') ||
-        request.nextUrl.pathname.startsWith('/add-transaction') ||
-        request.nextUrl.pathname.startsWith('/history') || 
-        request.nextUrl.pathname.startsWith('/profile')) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-  } else {
-    // Redirect authenticated users away from auth pages
-    if (request.nextUrl.pathname === '/' ||
-        request.nextUrl.pathname.startsWith('/signin') ||
-        request.nextUrl.pathname.startsWith('/signup')) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
+  // Define routes
+  const publicRoutes = ['/', '/signin', '/signup'];
+  const protectedRoutes = ['/dashboard', '/add-transaction', '/history', '/profile', '/budget', '/AI'];
+
+  // IMPORTANT: Allow API routes to pass through without redirects
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
   }
 
+  // Redirect authenticated users from public routes to dashboard
+  if (token && publicRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Redirect unauthenticated users from protected routes to signin
+  if (!token && protectedRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // All other cases - allow the request to proceed
   return NextResponse.next();
 }

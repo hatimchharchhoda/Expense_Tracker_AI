@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname } from 'next/navigation';
-import AppBar from '@/components/ui/Navbar';
+import NewNavbar from '@/components/NewNavbar';
 
 export default function ClientNavbar() {
   const pathname = usePathname();
@@ -13,5 +13,5 @@ export default function ClientNavbar() {
   // Check if the current path is in the hideNavbarPaths array
   const showNavbar = !hideNavbarPaths.includes(pathname);
 
-  return showNavbar ? <AppBar /> : null;
+  return showNavbar ? <NewNavbar /> : null;
 }

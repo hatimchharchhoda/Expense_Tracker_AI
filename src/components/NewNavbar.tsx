@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Navbar, 
   NavbarBrand, 
@@ -21,7 +20,7 @@ import { signOut } from 'next-auth/react';
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/authSlice";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeToggle } from "../ThemeToggle";
+import { ThemeToggle } from "./ThemeToggle";
 
 export interface AuthState {
   status: boolean;
@@ -40,10 +39,16 @@ const ExpenseLogo = () => (
   </div>
 );
 
-export default function AppBar() {
+export default function NewNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname ? usePathname() : "";
+  const router = useRouter();
   const dispatch = useDispatch();
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const user = useSelector((state: { auth: AuthState }) => state.auth?.status);
   const userData = useSelector((state: { auth: AuthState }) => state.auth?.userData);
@@ -79,11 +84,7 @@ export default function AppBar() {
 
   const mobileMenuItems = [
     ...menuItems,
-    { 
-      label: "Profile", 
-      href: "/profile", 
-      icon: <User className="w-4 h-4 mr-2" /> 
-    },
+  
   ];
 
   // Check if a route is active
@@ -108,6 +109,16 @@ export default function AppBar() {
     }
   };
 
+  // IMPORTANT: Using direct navigation method instead of Link components
+  const navigate = (href: string) => {
+    window.location.href = href;
+  };
+
+  // Don't render until client-side
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <Navbar 
       onMenuOpenChange={setIsMenuOpen} 
@@ -121,16 +132,16 @@ export default function AppBar() {
       />
       
       <NavbarBrand>
-        <Link
-          href="/"
-          className="flex items-center gap-3 hover:opacity-90 transition-opacity"
+        <div 
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer"
         >
           <ExpenseLogo />
           <div>
             <p className="font-bold text-foreground text-xl">Expense Tracker</p>
             <p className="text-xs text-muted-foreground -mt-1 hidden sm:block">Manage your finances</p>
           </div>
-        </Link>
+        </div>
       </NavbarBrand>
 
       {isAuthenticated ? (
@@ -138,20 +149,19 @@ export default function AppBar() {
           <NavbarContent className="hidden sm:flex gap-1" justify="center">
             {menuItems.map((item) => (
               <NavbarItem key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`px-4 py-2 rounded-lg flex items-center text-sm transition-all duration-200 ${
+                <div
+                  onClick={() => navigate(item.href)}
+                  className={`px-4 py-2 rounded-lg flex items-center text-sm transition-all duration-200 cursor-pointer ${
                     isActive(item.href)
                       ? "text-blue-600 bg-blue-50 font-medium dark:text-blue-400 dark:bg-blue-950/50"
                       : "text-foreground hover:bg-accent hover:text-accent-foreground"
                   }`}
-                  onClick={() => setIsMenuOpen(false)}
                 >
                   <span className={`hidden md:block ${isActive(item.href) ? "opacity-100" : "opacity-70"}`}>
                     {item.icon}
                   </span>
                   {item.label}
-                </Link>
+                </div>
               </NavbarItem>
             ))}
           </NavbarContent>
@@ -172,14 +182,7 @@ export default function AppBar() {
                 </Avatar>
               </DropdownTrigger>
               <DropdownMenu aria-label="User menu">
-                <DropdownItem 
-                  key="profile" 
-                  startContent={<User className="w-4 h-4" />}
-                >
-                  <Link href="/profile" className="block w-full">
-                    Profile
-                  </Link>
-                </DropdownItem>
+              
                 <DropdownItem 
                   key="logout" 
                   onPress={handleLogout} 
@@ -196,18 +199,20 @@ export default function AppBar() {
           <NavbarMenu className="pt-6 pb-10 px-4 bg-background/95 backdrop-blur-md dark:bg-background/90">
             {mobileMenuItems.map((item, index) => (
               <NavbarMenuItem key={`${item.label}-${index}`} className="my-1">
-                <Link
-                  href={item.href}
-                  className={`w-full px-4 py-3 rounded-lg flex items-center ${
+                <div
+                  onClick={() => {
+                    navigate(item.href);
+                    setIsMenuOpen(false);
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg flex items-center cursor-pointer ${
                     isActive(item.href)
                       ? "text-blue-600 bg-blue-50 font-medium dark:text-blue-400 dark:bg-blue-950/50"
                       : "text-foreground hover:bg-accent"
                   }`}
-                  onClick={() => setIsMenuOpen(false)}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {item.label}
-                </Link>
+                </div>
               </NavbarMenuItem>
             ))}
             <NavbarMenuItem className="my-1">
@@ -224,22 +229,22 @@ export default function AppBar() {
       ) : (
         <NavbarContent justify="end" className="gap-2">
           <ThemeToggle />
-          <Link
-            href="/signup"
+          <div
+            onClick={() => navigate("/signup")}
             className="px-6 py-2 bg-primary text-primary-foreground rounded-lg 
                      hover:bg-primary/90 focus:ring-2 focus:ring-primary/30 
-                     transition-all duration-200 font-medium sm:block hidden"
+                     transition-all duration-200 font-medium sm:block hidden cursor-pointer"
           >
             Sign Up
-          </Link>
-          <Link
-            href="/signin"
+          </div>
+          <div
+            onClick={() => navigate("/signin")}
             className="px-6 py-2 mr-3 bg-secondary text-secondary-foreground rounded-lg 
                      hover:bg-secondary/80 focus:ring-2 focus:ring-secondary/30 
-                     transition-all duration-200 font-medium"
+                     transition-all duration-200 font-medium cursor-pointer"
           >
             Login
-          </Link>
+          </div>
         </NavbarContent>
       )}
     </Navbar>
