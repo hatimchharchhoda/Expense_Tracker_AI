@@ -234,12 +234,13 @@ export default function Recommendations() {
 }
 
 // Function to generate recommendations based on financial data
+// Function to generate recommendations based on financial data
 function generateRecommendations(data: any): Recommendation[] {
-  const recommendations: Recommendation[] = []
+  const recommendations: Recommendation[] = [];
   
   // 1. Over budget categories
   if (data.budgetStatus.overBudgetCategories.length > 0) {
-    const topOverCategory = data.budgetStatus.overBudgetCategories[0]
+    const topOverCategory = data.budgetStatus.overBudgetCategories[0];
     recommendations.push({
       title: `Reduce ${topOverCategory.category} Spending`,
       description: `You've spent ${Math.round(topOverCategory.percentageUsed)}% of your ${topOverCategory.category} budget. Consider finding ways to cut back in this category for the rest of the month.`,
@@ -247,7 +248,7 @@ function generateRecommendations(data: any): Recommendation[] {
       accentColor: "border-red-500",
       actionLink: "/budget",
       actionText: "Adjust Budget"
-    })
+    });
   }
   
   // 2. Budget creation recommendation
@@ -259,32 +260,77 @@ function generateRecommendations(data: any): Recommendation[] {
       accentColor: "border-blue-500",
       actionLink: "/budget",
       actionText: "Create Budget"
-    })
+    });
   }
   
-  // 3. Savings recommendation
-  const savingsPercentage = (data.summary.totalSavings / data.summary.totalIncome) * 100
-  if (savingsPercentage < 20 && data.summary.totalIncome > 0) {
-    recommendations.push({
-      title: "Increase Your Savings",
-      description: `You're currently saving ${savingsPercentage.toFixed(1)}% of your income. Financial experts recommend saving at least 20% of your income.`,
-      icon: <ArrowUpRight className="h-4 w-4 text-green-500" />,
-      accentColor: "border-green-500",
-      actionLink: "/add-transaction",
-      actionText: "Add Savings"
-    })
+  // 3. Enhanced Savings recommendations
+  // Calculate savings percentage
+  const savingsAmount = data.summary.totalSavings || 0;
+  const incomeAmount = data.summary.totalIncome || 1; // Prevent division by zero
+  const savingsPercentage = (savingsAmount / incomeAmount) * 100;
+  
+  console.log("Savings data:", {
+    savingsAmount,
+    incomeAmount,
+    savingsPercentage,
+    transactions: data.transactions
+  });
+  
+  // Always offer a savings recommendation for improved visibility
+  if (incomeAmount > 0) {
+    if (savingsPercentage >= 20) {
+      // Great savings rate
+      recommendations.push({
+        title: "Excellent Savings Rate!",
+        description: `You're saving ${savingsPercentage.toFixed(1)}% of your income, which exceeds the recommended 20%. Consider optimizing these savings through strategic investments.`,
+        icon: <ArrowUpRight className="h-4 w-4 text-green-500" />,
+        accentColor: "border-green-500",
+        actionLink: "/budget",
+        actionText: "Review Savings Plan"
+      });
+    } else if (savingsPercentage >= 10) {
+      // Good but could be better
+      recommendations.push({
+        title: "Good Progress on Savings",
+        description: `You're saving ${savingsPercentage.toFixed(1)}% of your income. You're on the right track, but try to reach the recommended 20% for long-term financial security.`,
+        icon: <ArrowUpRight className="h-4 w-4 text-amber-500" />,
+        accentColor: "border-amber-500",
+        actionLink: "/add-transaction",
+        actionText: "Increase Savings"
+      });
+    } else if (savingsPercentage > 0) {
+      // Has some savings but needs improvement
+      recommendations.push({
+        title: "Increase Your Savings",
+        description: `You're currently saving ${savingsPercentage.toFixed(1)}% of your income. Financial experts recommend saving at least 20% of your income for financial security.`,
+        icon: <ArrowUpRight className="h-4 w-4 text-red-500" />,
+        accentColor: "border-red-500",
+        actionLink: "/add-transaction",
+        actionText: "Add More Savings"
+      });
+    } else {
+      // No savings at all
+      recommendations.push({
+        title: "Start Building Savings",
+        description: "You don't have any recorded savings yet. Try to allocate at least 10-20% of your income to savings for financial security.",
+        icon: <PiggyBank className="h-4 w-4 text-red-500" />,
+        accentColor: "border-red-500",
+        actionLink: "/add-transaction",
+        actionText: "Start Saving"
+      });
+    }
   }
   
   // 4. High expense category insight
   if (data.topExpenseCategories.length > 0) {
-    const topCategory = data.topExpenseCategories[0]
+    const topCategory = data.topExpenseCategories[0];
     if (topCategory.percentage > 30) {
       recommendations.push({
         title: `${topCategory.category} Is Your Top Expense`,
         description: `You're spending ${topCategory.percentage.toFixed(1)}% of your expenses on ${topCategory.category}. This might be an area to evaluate for potential savings.`,
         icon: <TrendingUp className="h-4 w-4 text-amber-500" />,
         accentColor: "border-amber-500"
-      })
+      });
     }
   }
   
@@ -295,8 +341,8 @@ function generateRecommendations(data: any): Recommendation[] {
       description: "Your expenses are higher than your income this period. Consider reducing non-essential spending or finding additional income sources.",
       icon: <DollarSign className="h-4 w-4 text-red-500" />,
       accentColor: "border-red-500"
-    })
+    });
   }
   
-  return recommendations
+  return recommendations;
 }

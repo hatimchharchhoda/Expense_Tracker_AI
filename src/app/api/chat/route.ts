@@ -19,30 +19,29 @@ export async function POST(req: Request) {
     // Filter out system messages for Gemini
     const userMessages = messages.filter((m: any) => m.role !== 'system');
     
-    // Create a complete version of the system message that includes all financial data
+    // Create a complete version of the system message
     let systemPrompt = `You are a financial assistant helping with budgeting and expense management.`;
     
-    // Keep ALL financial data - don't filter anything out
+    // IMPORTANT: Pass through the ENTIRE system message without filtering
     if (systemMessage) {
-      // Include all of the system message content, including expense categories
-      systemPrompt += `\n\nUser's financial data:\n${systemMessage.content}`;
+      systemPrompt = systemMessage.content;
       
-      // Add explicit instruction for expense questions
-      systemPrompt += `\n\nWhen asked about spending patterns or expense categories, use the detailed expense data above to provide specific insights.`;
+      // Add this section to ensure expense details are analyzed correctly
+      systemPrompt += `
+When analyzing expense data:
+1. Focus on the TOP SPENDING CATEGORIES section
+2. Provide specific amounts and percentages when discussing spending
+3. Never say you don't have enough information about expenses`;
     }
     
-    // Add formatting instructions
-    systemPrompt += `\n\nFormat responses as:
-• Use bullet points for general advice
-• Be direct and specific with amounts
-• Refer to currency as ₹X,XXX (Indian Rupees)`;
-
+    console.log("System prompt used:", systemPrompt.substring(0, 200) + "..."); // Log for debugging
+    
     try {
       const result = streamText({
         model: google("models/gemini-1.5-flash-latest"),
         system: systemPrompt,
         messages: userMessages,
-        temperature: 0.5,
+        temperature: 0.3, // Lower temperature for more focused, factual responses
         maxTokens: 800, // Increased token limit to handle more data
       });
       

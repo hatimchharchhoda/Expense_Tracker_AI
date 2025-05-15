@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux'
 import { PREDEFINED_CATEGORIES } from '@/models/model'
 
 // Define our data types
+// Update your Transaction interface to include the category property
 export interface Transaction {
   _id: string
   name: string
@@ -14,6 +15,7 @@ export interface Transaction {
   color: string
   date: string | Date
   description?: string
+  category?: string  // Add this optional property
 }
 
 export interface Budget {
@@ -81,8 +83,8 @@ export function FinancialDataProvider({ children }: { children: ReactNode }) {
 
   // Process transactions into categories
  // Process transactions into categories
+// Process transactions into categories - FIXED VERSION
 const processTransactions = (transactions: Transaction[]) => {
-  // Ensure dates are properly handled and categorize transactions appropriately
   return transactions.map(tx => {
     // Convert date strings to Date objects
     const processed = {
@@ -90,13 +92,14 @@ const processTransactions = (transactions: Transaction[]) => {
       date: new Date(tx.date)
     };
     
-    // Ensure transaction has the correct category type
+    // Add a category property but preserve the original type
     if (processed.type === 'Investment' || processed.type === 'Savings') {
-      processed.type = processed.type; // Mark as special category
+      processed.category = processed.type;
     } else if (processed.type === 'Income') {
-      processed.type = 'Income';
+      processed.category = 'Income';
     } else {
-      processed.type = 'Expense'; // All other types are expenses
+      processed.category = 'Expense'; // Generic category
+      // But keep the original type (Food, Housing, etc.) intact!
     }
     
     return processed;
@@ -106,7 +109,8 @@ const processTransactions = (transactions: Transaction[]) => {
   // Calculate summaries and insights
   const calculateInsights = (transactions: Transaction[], budgets: Budget[]) => {
     // Filter transactions by type
-    const expenseTransactions = transactions.filter(tx => 
+    // Filter transactions by type
+const expenseTransactions = transactions.filter(tx => 
   tx.type !== 'Income' && tx.type !== 'Investment' && tx.type !== 'Savings'
 );
 const incomeTransactions = transactions.filter(tx => tx.type === 'Income');
@@ -120,13 +124,15 @@ const savingsTransactions = transactions.filter(tx => tx.type === 'Savings');
     const netBalance = totalIncome - totalExpenses - totalSavings
     
     // Get spending by category
-    const spendingByCategory: Record<string, number> = {}
-    
-    expenseTransactions.forEach(tx => {
-      const category = tx.type
-      if (!spendingByCategory[category]) spendingByCategory[category] = 0
-      spendingByCategory[category] += tx.amount
-    })
+    // Get spending by category
+const spendingByCategory: Record<string, number> = {}
+
+expenseTransactions.forEach(tx => {
+  // Use the original transaction type, not the generic "Expense" category
+  const category = tx.type  // This is correct and should remain as is
+  if (!spendingByCategory[category]) spendingByCategory[category] = 0
+  spendingByCategory[category] += tx.amount
+})
 
     // Get income by category
     const incomeByCategory: Record<string, number> = {}
