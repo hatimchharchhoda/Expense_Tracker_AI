@@ -669,11 +669,11 @@ function DashboardPage() {
                   Your monthly spending against budget limits
                 </CardDescription>
               </div>
-              <Link href="/budget">
+              {/* <Link href="/budget">
                 <Button variant="ghost" size="sm" className="text-xs h-8 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                   Manage Budgets
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -766,11 +766,11 @@ function DashboardPage() {
                   Your most recent financial activities
                 </CardDescription>
               </div>
-              <Link href="/history">
+              {/* <Link href="/history">
                 <Button variant="ghost" size="sm" className="text-xs h-8 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                   View All
                 </Button>
-              </Link>
+              </Link> */}
             </div>
           </CardHeader>
           <CardContent>
