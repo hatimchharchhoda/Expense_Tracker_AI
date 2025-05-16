@@ -156,6 +156,36 @@ export default function SignInForm() {
                       'Sign In'
                     )}
                   </Button>
+                  <Button
+  type="button"
+  variant="outline"
+  className="w-full mt-2"
+  onClick={() => {
+    const guestCredentials = {
+      identifier: 'one@gmail.com',
+      password: '123456',
+    };
+
+    form.setValue('identifier', guestCredentials.identifier);
+    form.setValue('password', guestCredentials.password);
+    
+    // Submit the form after a short delay (e.g., after values are populated)
+    setTimeout(() => {
+      form.handleSubmit(onSubmit)();
+    }, 100);
+  }}
+  disabled={loading}
+>
+  {loading ? (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Signing in...
+    </>
+  ) : (
+    'Login as Guest'
+  )}
+</Button>
+
                 </form>
               </Form>
               
