@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   // Redirect to dashboard if the user is already authenticated
   // and trying to access sign-in, sign-up, or home page
   if (!token && 
-    (url.pathname.startsWith('/dashboard') ||
+    (
       url.pathname.startsWith('/add-transaction') ||
       url.pathname.startsWith('/history') || 
       url.pathname.startsWith('/profile')) ){
