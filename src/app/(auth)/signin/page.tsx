@@ -20,11 +20,13 @@ import { signInSchema } from '@/schemas/signInSchema';
 import { useState } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Mail, Lock, Loader2 } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
 
 export default function SignInForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
@@ -37,39 +39,102 @@ export default function SignInForm() {
   const onSubmit = async (data: z.infer<typeof signInSchema>) => {
     setLoading(true);
     
-    const result = await signIn('credentials', {
-      redirect: false,
-      email: data.identifier,
-      password: data.password,
-    });
-    
-    if (result?.error) {
-      setLoading(false); // Reset loading on error
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: data.identifier,
+        password: data.password,
+      });
+      
+      if (result?.error) {
+        toast({
+          title: 'Login Failed',
+          description:
+            result.error === 'CredentialsSignin'
+              ? 'Incorrect username or password'
+              : result.error,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Login Successful',
+          description: 'Redirecting to dashboard...',
+          variant: 'default',
+        });
+
+        const session = await getSession();
+        if (session) {
+          localStorage.setItem('session', JSON.stringify(session));
+        }
+
+        router.replace('/');
+        router.refresh();
+      }
+    } catch (error) {
       toast({
         title: 'Login Failed',
-        description:
-          result.error === 'CredentialsSignin'
-            ? 'Incorrect username or password'
-            : result.error,
+        description: 'An unexpected error occurred',
         variant: 'destructive',
       });
-    } else {
-      toast({
-        title: 'Login Successful',
-        description: 'Redirecting to dashboard...',
-        variant: 'default',
-      });
-
-      const session = await getSession();
-      if (session) {
-        localStorage.setItem('session', JSON.stringify(session));
-      }
-
-      router.replace('/');
-      router.refresh();
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setLoading(false);
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    
+    try {
+      const result = await signIn('google', {
+        redirect: false,
+        callbackUrl: '/',
+      });
+      
+      if (result?.error) {
+        toast({
+          title: 'Google Sign-In Failed',
+          description: result.error,
+          variant: 'destructive',
+        });
+      } else if (result?.url) {
+        toast({
+          title: 'Login Successful',
+          description: 'Redirecting to dashboard...',
+          variant: 'default',
+        });
+        
+        // Get session and store it
+        const session = await getSession();
+        if (session) {
+          localStorage.setItem('session', JSON.stringify(session));
+        }
+        
+        router.replace('/');
+        router.refresh();
+      }
+    } catch (error) {
+      toast({
+        title: 'Google Sign-In Failed',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGuestLogin = () => {
+    const guestCredentials = {
+      identifier: 'one@gmail.com',
+      password: '123456',
+    };
+
+    form.setValue('identifier', guestCredentials.identifier);
+    form.setValue('password', guestCredentials.password);
+    
+    setTimeout(() => {
+      form.handleSubmit(onSubmit)();
+    }, 100);
   };
 
   return (
@@ -97,6 +162,39 @@ export default function SignInForm() {
                   Sign in to your account
                 </p>
               </div>
+
+              {/* Google Sign-In Button */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mb-6 h-12 border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading || loading}
+              >
+                {googleLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in with Google...
+                  </>
+                ) : (
+                  <>
+                    <FcGoogle className="mr-2 h-5 w-5" />
+                    Continue with Google
+                  </>
+                )}
+              </Button>
+
+              {/* Divider */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-300 dark:border-gray-600" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-gray-800 px-2 text-muted-foreground">
+                    Or continue with email
+                  </span>
+                </div>
+              </div>
               
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -113,6 +211,7 @@ export default function SignInForm() {
                           {...field}
                           className="bg-background border-input"
                           placeholder="your@email.com"
+                          disabled={loading || googleLoading}
                         />
                         <FormMessage />
                       </FormItem>
@@ -124,18 +223,16 @@ export default function SignInForm() {
                     control={form.control}
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center justify-between">
-                          <FormLabel className="flex items-center text-foreground font-medium">
-                            <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
-                            Password
-                          </FormLabel>
-                          
-                        </div>
+                        <FormLabel className="flex items-center text-foreground font-medium">
+                          <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
+                          Password
+                        </FormLabel>
                         <Input
                           type="password"
                           {...field}
                           className="bg-background border-input"
                           placeholder="••••••••"
+                          disabled={loading || googleLoading}
                         />
                         <FormMessage />
                       </FormItem>
@@ -145,7 +242,7 @@ export default function SignInForm() {
                   <Button
                     type="submit"
                     className="w-full mt-2 bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-semibold py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                   >
                     {loading ? (
                       <>
@@ -156,36 +253,23 @@ export default function SignInForm() {
                       'Sign In'
                     )}
                   </Button>
-                  <Button
-  type="button"
-  variant="outline"
-  className="w-full mt-2"
-  onClick={() => {
-    const guestCredentials = {
-      identifier: 'one@gmail.com',
-      password: '123456',
-    };
 
-    form.setValue('identifier', guestCredentials.identifier);
-    form.setValue('password', guestCredentials.password);
-    
-    // Submit the form after a short delay (e.g., after values are populated)
-    setTimeout(() => {
-      form.handleSubmit(onSubmit)();
-    }, 100);
-  }}
-  disabled={loading}
->
-  {loading ? (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Signing in...
-    </>
-  ) : (
-    'Login as Guest'
-  )}
-</Button>
-
+                                    <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full mt-2"
+                    onClick={handleGuestLogin}
+                    disabled={loading || googleLoading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      'Login as Guest'
+                    )}
+                  </Button>
                 </form>
               </Form>
               

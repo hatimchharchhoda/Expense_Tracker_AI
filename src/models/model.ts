@@ -6,13 +6,16 @@ export interface Category extends Document {
   color: string;
 }
 
-// Define User interface
+// Define User interface - Updated with Google OAuth support
 export interface Usertype extends Document {
   username: string;
   email: string;
-  password: string;
+  password?: string; // Made optional for OAuth users
   budget: number;
   spent: number;
+  isGoogleUser: boolean; // Flag to identify OAuth users
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // Transaction interface - with user reference
@@ -36,7 +39,6 @@ export interface Budget extends Document {
 }
 
 // Define predefined categories we'll use throughout the application
-// In your models/model.js file:
 export const PREDEFINED_CATEGORIES = [
   { type: 'Housing', color: '#E57373' },
   { type: 'Food', color: '#81C784' },
@@ -78,6 +80,7 @@ const budget_model = new Schema<Budget>({
   year: { type: Number, required: true }
 });
 
+// Updated User Schema with Google OAuth support
 const UserSchema = new Schema<Usertype>({
   username: {
     type: String,
@@ -93,7 +96,17 @@ const UserSchema = new Schema<Usertype>({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: false, // Make it optional
+    validate: {
+      validator: function(this: Usertype, value: string | undefined) {
+        // Only require password if not a Google user
+        if (!this.isGoogleUser && (!value || value.trim() === '')) {
+          return false;
+        }
+        return true;
+      },
+      message: 'Password is required for non-Google users'
+    }
   },
   budget: {
     type: Number,
@@ -103,13 +116,19 @@ const UserSchema = new Schema<Usertype>({
     type: Number,
     default: 0
   },
+  isGoogleUser: {
+    type: Boolean,
+    default: false,
+  },
+}, {
+  timestamps: true,
 });
 
 // Client-side safe exports
-let Categories;
-let Transaction;
-let Budgets;
-let UserModel;
+let Categories: mongoose.Model<Category>;
+let Transaction: mongoose.Model<Transaction>;
+let Budgets: mongoose.Model<Budget>;
+let UserModel: mongoose.Model<Usertype>;
 
 if (isServer) {
   // Only create models on the server
@@ -119,10 +138,10 @@ if (isServer) {
   Budgets = mongoose.models.budget || mongoose.model<Budget>('budget', budget_model);
 } else {
   // On client-side, we just provide empty objects to prevent errors
-  UserModel = {};
-  Categories = {};
-  Transaction = {};
-  Budgets = {};
+  UserModel = {} as mongoose.Model<Usertype>;
+  Categories = {} as mongoose.Model<Category>;
+  Transaction = {} as mongoose.Model<Transaction>;
+  Budgets = {} as mongoose.Model<Budget>;
 }
 
 export { Categories, Transaction, Budgets };

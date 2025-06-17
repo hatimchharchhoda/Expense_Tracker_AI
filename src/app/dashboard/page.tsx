@@ -20,6 +20,7 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 import { getTotal } from '@/helper/graphData';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PREDEFINED_CATEGORIES } from '@/models/model';
 import { 
   ArrowDownIcon, 
@@ -32,7 +33,8 @@ import {
   TrendingUp, 
   Clock, 
   AlertCircle,
-  Coins
+  Coins,
+  Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -78,6 +80,11 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // New state for month/year filtering
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  
   const { data: session, status: sessionStatus } = useSession();
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.auth?.userData || {});
@@ -91,6 +98,22 @@ function DashboardPage() {
 
   // Cache duration (2 minutes for dashboard data since it changes frequently)
   const CACHE_DURATION = 2 * 60 * 1000;
+
+  // Month names for display
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  // Generate year options (current year - 5 to current year + 1)
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let year = currentYear - 5; year <= currentYear + 1; year++) {
+      years.push(year);
+    }
+    return years;
+  }, []);
 
   // Add authentication setup from landing page
   useEffect(() => {
@@ -209,23 +232,32 @@ function DashboardPage() {
     }
   }, [fetchDashboardData, getFromCache, user?.user?._id]);
 
-  // Calculate summary data
-  const expenseTransactions = transactions.filter(transaction => transaction.type !== 'Income' && transaction.type !== 'Savings');
-  const incomeTransactions = transactions.filter(transaction => transaction.type === 'Income');
-  const savingsTransactions = transactions.filter(transaction => transaction.type === 'Savings');
+  // Filter transactions based on selected month and year
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.date);
+      return transactionDate.getMonth() + 1 === selectedMonth && 
+             transactionDate.getFullYear() === selectedYear;
+    });
+  }, [transactions, selectedMonth, selectedYear]);
+
+  // Calculate summary data using filtered transactions
+  const expenseTransactions = filteredTransactions.filter(transaction => transaction.type !== 'Income' && transaction.type !== 'Savings');
+  const incomeTransactions = filteredTransactions.filter(transaction => transaction.type === 'Income');
+  const savingsTransactions = filteredTransactions.filter(transaction => transaction.type === 'Savings');
   
   const totalExpenses = expenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   const totalIncome = incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   const totalSavings = savingsTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
   
-  // Get recent transactions
+  // Get recent transactions from filtered data
   const recentTransactions = useMemo(() => {
-    return [...transactions]
+    return [...filteredTransactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
-  }, [transactions]);
+  }, [filteredTransactions]);
   
-  // Get category data for budget comparison
+  // Get category data for budget comparison using filtered transactions
   const categoryTotals = useMemo(() => {
     return expenseTransactions.reduce((acc, transaction) => {
       const { type, amount } = transaction;
@@ -235,22 +267,17 @@ function DashboardPage() {
     }, {} as Record<string, number>);
   }, [expenseTransactions]);
   
-  // Prepare budget vs actual data
+  // Prepare budget vs actual data for selected month/year
   const budgetVsActualData = useMemo(() => {
-    // Get current month and year
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    
     return PREDEFINED_CATEGORIES
       .filter(cat => cat.type !== 'Income' && cat.type !== 'Savings')
       .map(cat => {
         const category = cat.type;
         const actual = categoryTotals[category] || 0;
         
-        // Find current month's budget for this category
+        // Find selected month/year's budget for this category
         const budget = budgets.find(
-          b => b.category === category && b.month === currentMonth && b.year === currentYear
+          b => b.category === category && b.month === selectedMonth && b.year === selectedYear
         );
         
         return {
@@ -260,20 +287,38 @@ function DashboardPage() {
           remaining: (budget?.amount || 0) - actual
         };
       });
-  }, [budgets, categoryTotals]);
+  }, [budgets, categoryTotals, selectedMonth, selectedYear]);
 
-  // Prepare data for monthly expenses bar chart
+  // Prepare data for monthly expenses bar chart (showing full year but highlighting selected month)
   const monthlyExpenseData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentYear = new Date().getFullYear();
     
     const expensesByMonth = Array(12).fill(0);
     
-    expenseTransactions.forEach(transaction => {
+    // Use all transactions for the selected year
+    const yearTransactions = transactions.filter(transaction => {
       const date = new Date(transaction.date);
-      if (date.getFullYear() === currentYear) {
-        expensesByMonth[date.getMonth()] += transaction.amount;
-      }
+      return date.getFullYear() === selectedYear && transaction.type !== 'Income' && transaction.type !== 'Savings';
+    });
+    
+    yearTransactions.forEach(transaction => {
+      const date = new Date(transaction.date);
+      expensesByMonth[date.getMonth()] += transaction.amount;
+    });
+    
+    // Create background colors array, highlighting the selected month
+    const backgroundColors = expensesByMonth.map((_, index) => {
+      const isSelectedMonth = index === selectedMonth - 1;
+      return isSelectedMonth 
+        ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.7)')
+        : (theme === 'dark' ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.4)');
+    });
+    
+    const borderColors = expensesByMonth.map((_, index) => {
+      const isSelectedMonth = index === selectedMonth - 1;
+      return isSelectedMonth 
+        ? (theme === 'dark' ? 'rgb(59, 130, 246)' : 'rgb(59, 130, 246)')
+        : (theme === 'dark' ? 'rgb(21, 128, 61)' : 'rgb(21, 128, 61)');
     });
     
     return {
@@ -282,19 +327,19 @@ function DashboardPage() {
         {
           label: 'Monthly Expenses',
           data: expensesByMonth,
-          backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(34, 197, 94, 0.6)',
-          borderColor: theme === 'dark' ? 'rgb(21, 128, 61)' : 'rgb(21, 128, 61)',
-          borderWidth: 1,
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 2,
           borderRadius: 6,
-          hoverBackgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(34, 197, 94, 0.8)',
+          hoverBackgroundColor: backgroundColors.map(color => color.replace('0.5', '0.9').replace('0.4', '0.8').replace('0.8', '1').replace('0.7', '0.9')),
         }
       ]
     };
-  }, [expenseTransactions, theme]);
+  }, [transactions, selectedYear, selectedMonth, theme]);
 
-  // Create doughnut chart data for expense categories
+  // Create doughnut chart data for expense categories using filtered data
   const createDoughnutChartData = useMemo(() => {
-    // Get expense categories and their totals
+    // Get expense categories and their totals from filtered data
     const categories = Object.keys(categoryTotals);
     const values = Object.values(categoryTotals);
     
@@ -316,7 +361,7 @@ function DashboardPage() {
     };
   }, [categoryTotals, theme]);
 
-  // Area chart data for expenses
+  // Area chart data for expenses using filtered data
   const areaChartData = useMemo(() => {
     return expenseTransactions.map((transact) => {
       return {
@@ -346,7 +391,7 @@ function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {[1, 2, 3].map((i) => (
+                    {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[130px] w-full rounded-xl" />
           ))}
         </div>
@@ -384,112 +429,143 @@ function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl bg-background">
-      {/* Header with Title and Refresh Button */}
-      <div className="flex justify-between items-center mb-8">
+      {/* Header with Title, Month/Year Selector and Refresh Button */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Financial Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            Showing data for {monthNames[selectedMonth - 1]} {selectedYear}
           </p>
         </div>
 
-        <Button 
-          onClick={() => fetchDashboardData(true)} 
-          disabled={refreshing}
-          variant="outline" 
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh Data'}
-        </Button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Month/Year Selectors */}
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthNames.map((month, index) => (
+                  <SelectItem key={index} value={(index + 1).toString()}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button 
+            onClick={() => fetchDashboardData(true)} 
+            disabled={refreshing}
+            variant="outline" 
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh Data'}
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      {/* Summary Cards */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-      <div className="h-8 w-8 rounded-full bg-green-500/20 dark:bg-green-500/10 flex items-center justify-center">
-        <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+            <div className="h-8 w-8 rounded-full bg-green-500/20 dark:bg-green-500/10 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">₹{totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="flex items-center mt-1">
+              <p className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                {incomeTransactions.length} transactions
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <div className="h-8 w-8 rounded-full bg-red-500/20 dark:bg-red-500/10 flex items-center justify-center">
+              <Wallet className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="flex items-center mt-1">
+              <p className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full">
+                {expenseTransactions.length} transactions
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* New Savings Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+            <div className="h-8 w-8 rounded-full bg-purple-500/20 dark:bg-purple-500/10 flex items-center justify-center">
+              <Coins className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">₹{totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="flex items-center mt-1">
+              <p className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full">
+                {savingsTransactions.length} transactions
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
+            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+              totalIncome - totalExpenses - totalSavings >= 0 
+                ? 'bg-blue-500/20 dark:bg-blue-500/10' 
+                : 'bg-amber-500/20 dark:bg-amber-500/10'
+            }`}>
+              {totalIncome - totalExpenses - totalSavings >= 0 ? (
+                <ArrowUpIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              ) : (
+                <ArrowDownIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">
+              ₹{Math.abs(totalIncome - totalExpenses - totalSavings).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="flex items-center mt-1">
+              <p className={`text-xs px-2 py-0.5 rounded-full ${
+                totalIncome - totalExpenses - totalSavings >= 0 
+                  ? 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30'
+                  : 'text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30'
+              }`}>
+                {totalIncome - totalExpenses - totalSavings >= 0 ? 'Available funds' : 'Deficit'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-foreground">₹{totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      <div className="flex items-center mt-1">
-        <p className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-          {incomeTransactions.length} transactions
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-  
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-      <div className="h-8 w-8 rounded-full bg-red-500/20 dark:bg-red-500/10 flex items-center justify-center">
-        <Wallet className="h-4 w-4 text-red-600 dark:text-red-400" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      <div className="flex items-center mt-1">
-        <p className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full">
-          {expenseTransactions.length} transactions
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-  
-  {/* New Savings Card */}
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-      <div className="h-8 w-8 rounded-full bg-purple-500/20 dark:bg-purple-500/10 flex items-center justify-center">
-        <Coins className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-foreground">₹{totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      <div className="flex items-center mt-1">
-        <p className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full">
-          {savingsTransactions.length} transactions
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-  
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
-      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-        totalIncome - totalExpenses - totalSavings >= 0 
-          ? 'bg-blue-500/20 dark:bg-blue-500/10' 
-          : 'bg-amber-500/20 dark:bg-amber-500/10'
-      }`}>
-        {totalIncome - totalExpenses - totalSavings >= 0 ? (
-          <ArrowUpIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        ) : (
-          <ArrowDownIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        )}
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-foreground">
-        ₹{Math.abs(totalIncome - totalExpenses - totalSavings).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-      <div className="flex items-center mt-1">
-        <p className={`text-xs px-2 py-0.5 rounded-full ${
-          totalIncome - totalExpenses - totalSavings >= 0 
-            ? 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30'
-            : 'text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30'
-        }`}>
-          {totalIncome - totalExpenses - totalSavings >= 0 ? 'Available funds' : 'Deficit'}
-        </p>
-      </div>
-    </CardContent>
-  </Card>
-</div>
 
       {/* Main Dashboard Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -500,16 +576,16 @@ function DashboardPage() {
               <div>
                 <CardTitle className="flex items-center">
                   <BarChart3 className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Monthly Expenses
+                  Monthly Expenses - {selectedYear}
                 </CardTitle>
                 <CardDescription>
-                  Your spending pattern throughout {new Date().getFullYear()}
+                  Your spending pattern throughout {selectedYear} (highlighted: {monthNames[selectedMonth - 1]})
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {expenseTransactions.length > 0 ? (
+            {transactions.some(t => new Date(t.date).getFullYear() === selectedYear && t.type !== 'Income' && t.type !== 'Savings') ? (
               <div className="h-[300px] w-full mt-2">
                 <Bar 
                   data={monthlyExpenseData}
@@ -565,7 +641,7 @@ function DashboardPage() {
             ) : (
               <div className="flex flex-col items-center justify-center h-[300px] p-6 bg-accent/30 rounded-lg">
                 <BarChart3 className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No expense data available</p>
+                <p className="text-muted-foreground text-center mb-2">No expense data available for {selectedYear}</p>
                 <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
                   Add your first transaction
                 </Link>
@@ -584,7 +660,7 @@ function DashboardPage() {
                   Spending by Category
                 </CardTitle>
                 <CardDescription>
-                  Breakdown of your expenses across categories
+                  Breakdown for {monthNames[selectedMonth - 1]} {selectedYear}
                 </CardDescription>
               </div>
             </div>
@@ -595,7 +671,7 @@ function DashboardPage() {
                 {/* Centered Total */}
                 <div className="absolute inset-0 flex flex-col justify-center items-center z-10 pointer-events-none pb-7">
                   <div className="bg-card/90 backdrop-blur-sm px-4 py-3 rounded-full shadow-sm border border-border">
-                    <h3 className="text-xs font-medium text-muted-foreground">Total Expenses</h3>
+                    <h3 className="text-xs font-medium text-muted-foreground">Monthly Expenses</h3>
                     <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                       ₹{totalExpenses.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
                     </span>
@@ -604,50 +680,50 @@ function DashboardPage() {
                 
                 {/* Doughnut Chart */}
                 <div className="relative h-[300px] flex items-center justify-center" style={{ overflow: 'visible' }}>
-                <div className="h-[290px] w-[290px]">
-                  <Doughnut 
-                    data={createDoughnutChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      cutout: '65%',
-                      plugins: {
-                        legend: {
-                          display: true,
-                          position: 'bottom',
-                          labels: {
-                            boxWidth: 12,
-                            padding: 15,
-                            usePointStyle: true,
-                            pointStyle: 'circle',
-                            font: {
-                              size: 11
-                            },
-                            color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'
-                          }
-                        },
-                        tooltip: {
-                          backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)',
-                          padding: 10,
-                          cornerRadius: 6,
-                          callbacks: {
-                            label: function(context) {
-                              const value = context.raw;
-                              const percentage = ((value as number) / totalExpenses * 100).toFixed(1);
-                              return `₹${(value as number).toLocaleString('en-IN')} (${percentage}%)`;
+                  <div className="h-[290px] w-[290px]">
+                    <Doughnut 
+                      data={createDoughnutChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                              boxWidth: 12,
+                              padding: 15,
+                              usePointStyle: true,
+                              pointStyle: 'circle',
+                              font: {
+                                size: 11
+                              },
+                              color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'
+                            }
+                          },
+                          tooltip: {
+                            backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)',
+                            padding: 10,
+                            cornerRadius: 6,
+                            callbacks: {
+                              label: function(context) {
+                                const value = context.raw;
+                                const percentage = totalExpenses > 0 ? ((value as number) / totalExpenses * 100).toFixed(1) : '0';
+                                return `₹${(value as number).toLocaleString('en-IN')} (${percentage}%)`;
+                              }
                             }
                           }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-[300px] p-6 bg-accent/30 rounded-lg">
                 <PieChart className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No category data available</p>
+                                <p className="text-muted-foreground text-center mb-2">No category data available for {monthNames[selectedMonth - 1]} {selectedYear}</p>
                 <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
                   Add your first transaction
                 </Link>
@@ -666,14 +742,9 @@ function DashboardPage() {
                   Budget Progress
                 </CardTitle>
                 <CardDescription>
-                  Your monthly spending against budget limits
+                  {monthNames[selectedMonth - 1]} {selectedYear} spending vs budget
                 </CardDescription>
               </div>
-              {/* <Link href="/budget">
-                <Button variant="ghost" size="sm" className="text-xs h-8 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
-                  Manage Budgets
-                </Button>
-              </Link> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -744,9 +815,9 @@ function DashboardPage() {
             ) : (
               <div className="flex flex-col items-center justify-center h-[260px] p-6 bg-accent/30 rounded-lg">
                 <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No budget data available</p>
+                <p className="text-muted-foreground text-center mb-2">No budget data for {monthNames[selectedMonth - 1]} {selectedYear}</p>
                 <Link href="/budget" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Set up your first budget
+                  Set up your budget
                 </Link>
               </div>
             )}
@@ -763,14 +834,9 @@ function DashboardPage() {
                   Recent Transactions
                 </CardTitle>
                 <CardDescription>
-                  Your most recent financial activities
+                  Latest transactions for {monthNames[selectedMonth - 1]} {selectedYear}
                 </CardDescription>
               </div>
-              {/* <Link href="/history">
-                <Button variant="ghost" size="sm" className="text-xs h-8 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
-                  View All
-                </Button>
-              </Link> */}
             </div>
           </CardHeader>
           <CardContent>
@@ -808,22 +874,24 @@ function DashboardPage() {
                     </div>
                   </div>
                 ))}
-                <div className="pt-4 text-center">
-                  <Link 
-                    href="/history" 
-                    className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300"
-                  >
-                    View all transactions
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </Link>
-                </div>
+                {filteredTransactions.length > 5 && (
+                  <div className="pt-4 text-center">
+                    <Link 
+                      href="/history" 
+                      className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                      View all transactions for {monthNames[selectedMonth - 1]}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </Link>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-[260px] p-6 bg-accent/30 rounded-lg">
                 <Clock className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No transactions available</p>
+                <p className="text-muted-foreground text-center mb-2">No transactions for {monthNames[selectedMonth - 1]} {selectedYear}</p>
                 <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
                   Add your first transaction
                 </Link>
@@ -834,7 +902,7 @@ function DashboardPage() {
       </div>
       
       {/* Area Chart and Doughnut Chart Row */}
-      {transactions.length > 0 && (
+      {filteredTransactions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           {/* Area Chart */}
           <Card className="shadow-md border border-border">
@@ -844,7 +912,7 @@ function DashboardPage() {
                 Expense Trends
               </CardTitle>
               <CardDescription>
-                Visualize your expense patterns over time
+                Expense patterns for {monthNames[selectedMonth - 1]} {selectedYear}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
@@ -862,7 +930,7 @@ function DashboardPage() {
                 Transaction Distribution
               </CardTitle>
               <CardDescription>
-                Overview of your transaction categories with details
+                Overview of {monthNames[selectedMonth - 1]} {selectedYear} transactions
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
@@ -872,7 +940,7 @@ function DashboardPage() {
                   <div className="absolute inset-0 flex flex-col justify-center items-center z-10">
                     <h3 className="text-sm font-medium text-muted-foreground">Total</h3>
                     <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      ₹{getTotal(transactions) ?? 0}
+                      ₹{getTotal(filteredTransactions) ?? 0}
                     </span>
                   </div>
                   
@@ -881,13 +949,13 @@ function DashboardPage() {
                     data={
                       {
                         datasets: [{
-                            data: transactions.map(v => v.amount),
-                            backgroundColor: transactions.map(v => v.color),
+                            data: filteredTransactions.map(v => v.amount),
+                            backgroundColor: filteredTransactions.map(v => v.color),
                             hoverOffset: 4,
                             borderRadius: 30,
                             spacing: 10
                         }],
-                        labels: transactions.map(v => v.type)
+                        labels: filteredTransactions.map(v => v.type)
                       }
                     }
                     options={{
@@ -910,27 +978,65 @@ function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions Footer */}
-      {/* <div className="mt-8 bg-card border border-border rounded-xl p-5 shadow-sm">
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="mb-4 md:mb-0">
-            <h3 className="font-medium text-foreground">Need to record a new transaction?</h3>
-            <p className="text-sm text-muted-foreground mt-1">Keep your finances updated for accurate insights.</p>
-          </div>
-          <div className="flex gap-4">
-            <Link href="/add-transaction">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-                Add Transaction
+      {/* No Data State for Selected Month */}
+      {filteredTransactions.length === 0 && transactions.length > 0 && (
+        <div className="mt-8 bg-card border border-border rounded-xl p-8 shadow-sm text-center">
+          <div className="flex flex-col items-center">
+            <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              No transactions found for {monthNames[selectedMonth - 1]} {selectedYear}
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't recorded any transactions for this month yet. Try selecting a different month or add some transactions.
+            </p>
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => {
+                  const currentDate = new Date();
+                  setSelectedMonth(currentDate.getMonth() + 1);
+                  setSelectedYear(currentDate.getFullYear());
+                }}
+                variant="outline"
+              >
+                Go to Current Month
               </Button>
-            </Link>
-            <Link href="/budget">
-              <Button variant="outline" className="border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50">
-                Manage Budgets
-              </Button>
-            </Link>
+              <Link href="/add-transaction">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Add Transaction
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </div> */}
+      )}
+
+      {/* Quick Actions Footer - Only show if there are transactions for selected month */}
+      {filteredTransactions.length > 0 && (
+        <div className="mt-8 bg-card border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-4 md:mb-0">
+              <h3 className="font-medium text-foreground">
+                Managing your finances for {monthNames[selectedMonth - 1]} {selectedYear}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Keep adding transactions and managing budgets for better financial insights.
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <Link href="/add-transaction">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                  Add Transaction
+                </Button>
+              </Link>
+              <Link href="/budget">
+                <Button variant="outline" className="border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50">
+                  Manage Budgets
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
