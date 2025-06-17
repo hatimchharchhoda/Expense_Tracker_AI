@@ -132,9 +132,9 @@ function DashboardPage() {
 
   useEffect(() => {
     // Update localStorage when session changes
-    if (session) {
+    if (session?.user?._id) {
       localStorage.setItem('session', JSON.stringify(session));
-      dispatch(login(session));
+      dispatch(login(session as AuthState["userData"]));
     }
   }, [session, dispatch]);
 

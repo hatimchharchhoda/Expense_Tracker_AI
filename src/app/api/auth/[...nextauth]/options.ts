@@ -64,8 +64,8 @@ export const authOptions: NextAuthOptions = {
 
           if (isPasswordCorrect) {
             return {
-              id: user._id.toString(),
-              _id: user._id.toString(),
+              id: (user as ExtendedUser)._id.toString(),
+              _id: (user as ExtendedUser)._id.toString(),
               username: user.username,
               email: user.email,
               budget: user.budget,
@@ -123,8 +123,8 @@ export const authOptions: NextAuthOptions = {
           }
           
           if (existingUser) {
-            user.id = existingUser._id.toString();
-            (user as any)._id = existingUser._id.toString();
+            user.id = (existingUser as ExtendedUser)._id.toString();
+            (user as any)._id = (existingUser as ExtendedUser)._id.toString();
             (user as any).username = existingUser.username;
             (user as any).budget = existingUser.budget;
             (user as any).spent = existingUser.spent;

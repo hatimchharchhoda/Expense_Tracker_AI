@@ -73,11 +73,11 @@ export default function Page() {
 
   useEffect(() => {
     // Update localStorage when session changes
-    if (session) {
-      localStorage.setItem('session', JSON.stringify(session));
-      dispatch(login(session));
-    }
-  }, [session, dispatch]);
+  if (session?.user?._id) {
+    localStorage.setItem('session', JSON.stringify(session));
+    dispatch(login(session as AuthState["userData"]));
+  }
+}, [session, dispatch]);
 
   // Show loading state only on initial load when no local data is available
   if (status === 'loading' && !userStatus) {

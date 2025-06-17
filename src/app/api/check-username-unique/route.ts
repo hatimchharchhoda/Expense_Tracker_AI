@@ -8,6 +8,10 @@ const UsernameQuerySchema = z.object({
 });
 
 export async function GET(request: Request) {
+    if (!request.url) {
+    return new Response(JSON.stringify({ error: "Missing URL" }), { status: 400 });
+  }
+
   await dbConnect();
 
   try {
