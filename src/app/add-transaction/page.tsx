@@ -1,4 +1,4 @@
-// app/add-transaction/page.tsx
+// /app/add-transaction/page.tsx
 'use client'
 
 import { useState, useCallback, useEffect } from "react";
@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Coins, DollarSign, Loader2, ListPlus, Receipt, Tag } from "lucide-react";
+import { ArrowLeft, Coins, DollarSign, Loader2, ListPlus, Receipt, Tag, Calendar } from "lucide-react";
 import { useSelector } from "react-redux";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -14,9 +14,10 @@ import { PREDEFINED_CATEGORIES } from "@/models/model";
 
 interface TransactionFormData {
   name: string;
-  type: string; // Category
+  type: string;
   amount: string;
   description: string;
+  date: string; // Add this line
 }
 
 function AddTransactionPage() {
@@ -30,24 +31,22 @@ function AddTransactionPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
-  // Set mounted state to true when component mounts
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Only access theme-related variables after mounting to avoid hydration mismatch
   const isDark = mounted && theme === 'dark';
   
-  // Get categories on component mount
   useEffect(() => {
     setCategories(PREDEFINED_CATEGORIES);
-    // Set default category
     if (!selectedType) {
       setValue("type", "Other");
     }
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    setValue("date", today);
   }, [setValue, selectedType]);
 
-  // Memoize the color getter function
   const getCategoryColor = useCallback((categoryType: string): string => {
     const category = categories.find(cat => cat.type === categoryType);
     return category?.color || "#CCCCCC";
@@ -58,7 +57,6 @@ function AddTransactionPage() {
     setIsSubmitting(true);
     
     try {
-      // Get user from localStorage
       const storedSession = localStorage.getItem('session');
       if (!storedSession) {
         toast({
@@ -70,11 +68,8 @@ function AddTransactionPage() {
       }
       
       const { user } = JSON.parse(storedSession);
-
-      // Calculate color based on the category
       const color = getCategoryColor(data.type);
       
-      // Format the transaction data
       const transaction = {
         name: data.name,
         type: data.type,
@@ -82,10 +77,9 @@ function AddTransactionPage() {
         description: data.description || "",
         color,
         user: user._id,
-        date: new Date()
+        date: data.date // Add this line
       };
 
-      // Send to API
       const response = await axios.post("/api/create-transaction", transaction);
 
       if (response.status === 200) {
@@ -95,7 +89,6 @@ function AddTransactionPage() {
           variant: "default",
         });
 
-        // Update user spent amount if it's an expense
         if (data.type !== 'Income' && user._id) {
           try {
             await fetch('/api/add-spent', {
@@ -117,8 +110,10 @@ function AddTransactionPage() {
         resetField("name");
         resetField("amount");
         resetField("description");
+        // Reset date to today
+        const today = new Date().toISOString().split('T')[0];
+        setValue("date", today);
         
-        // Navigate to history page
         router.push('/history');
       }
     } catch (error) {
@@ -131,9 +126,8 @@ function AddTransactionPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, toast, getCategoryColor, router, resetField, categories]);
+  }, [isSubmitting, toast, getCategoryColor, router, resetField, setValue]);
 
-  // Don't render UI until mounted to prevent hydration mismatch
   if (!mounted) {
     return null;
   }
@@ -162,6 +156,18 @@ function AddTransactionPage() {
               
               <div className="p-6">
                 <ul className="space-y-4 text-card-foreground">
+                  <li className="flex">
+                    <div className="mr-3 mt-1">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-medium">Date Selection</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">Choose the actual date when the transaction occurred for accurate tracking.</p>
+                    </div>
+                  </li>
+                  
                   <li className="flex">
                     <div className="mr-3 mt-1">
                       <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
@@ -283,9 +289,29 @@ function AddTransactionPage() {
                     />
                   </div>
 
+                  {/* Date Picker */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-foreground">
+                      <Calendar className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400" />
+                      Transaction Date
+                    </label>
+                    <input
+                      type="date"
+                      {...register("date", { required: "Date is required" })}
+                      max={new Date().toISOString().split('T')[0]} // Prevent future dates
+                      className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:ring-2 focus:ring-ring focus:border-input transition-all duration-200 text-foreground [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:dark:invert"
+                    />
+                    {errors.date && (
+                      <p className="text-sm text-destructive flex items-center mt-1">
+                        <span className="h-1 w-1 rounded-full bg-destructive mr-2"></span>
+                        {errors.date.message}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Two Columns for Category and Amount */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Category Selection */}
+                                        {/* Category Selection */}
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-foreground">
                         <Coins className="h-4 w-4 mr-2 text-blue-500 dark:text-blue-400" />
@@ -370,7 +396,7 @@ function AddTransactionPage() {
                     </button>
                   </div>
                   
-                                    {/* Quick Links */}
+                  {/* Quick Links */}
                   <div className="flex justify-center mt-6 pt-4 border-t border-border">
                     <div className="flex space-x-5">
                       <Link
@@ -397,53 +423,6 @@ function AddTransactionPage() {
                 </form>
               </div>
             </div>
-            
-            {/* Recent Transactions Shortcut */}
-            {/* <div className="mt-5 rounded-xl shadow-md p-5 bg-card border border-border">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium text-card-foreground">
-                  Quick Access
-                </h3>
-                <Link 
-                  href="/dashboard" 
-                  className="text-xs text-primary hover:text-primary/80"
-                >
-                  Go to Dashboard
-                </Link>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                <Link 
-                  href="/history" 
-                  className="p-3 rounded-lg flex flex-col items-center justify-center text-center transition-colors bg-accent hover:bg-accent/80 text-accent-foreground"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span className="text-xs">History</span>
-                </Link>
-                
-                <Link 
-                  href="/budget" 
-                  className="p-3 rounded-lg flex flex-col items-center justify-center text-center transition-colors bg-accent hover:bg-accent/80 text-accent-foreground"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-xs">Budget</span>
-                </Link>
-                
-                <Link 
-                  href="/dashboard" 
-                  className="p-3 rounded-lg flex flex-col items-center justify-center text-center transition-colors bg-accent hover:bg-accent/80 text-accent-foreground"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                  <span className="text-xs">Dashboard</span>
-                </Link>
-              </div>
-            </div> */}
           </div>
         </div>
       </div>

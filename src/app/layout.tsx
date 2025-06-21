@@ -2,7 +2,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,7 +26,6 @@ export const metadata: Metadata = {
     telephone: false,
   },
   manifest: "/manifest.json",
-  themeColor: "#3b82f6", // Tailwind blue-500
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -43,7 +42,7 @@ export const metadata: Metadata = {
     siteName: "Expense Tracker",
     images: [
       {
-        url: "https://expense-tracker-sujaltlrj.vercel.app/icon.png", // ✅ Absolute URL
+        url: "https://expense-tracker-sujaltlrj.vercel.app/icon.png",
         width: 1200,
         height: 630,
         alt: "Expense Tracker Dashboard Preview",
@@ -66,12 +65,15 @@ export const metadata: Metadata = {
     ],
     apple: { url: "/icon.png" },
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+};
+
+// Move themeColor and viewport to viewport export
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#3b82f6", // Moved from metadata
 };
 
 interface RootLayoutProps {

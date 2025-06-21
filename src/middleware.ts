@@ -3,15 +3,15 @@ import { getToken } from 'next-auth/jwt';
 
 export const config = {
   matcher: [
-    '/',
-    '/signin', // Your actual route
-    '/signup',
-    '/dashboard', 
-    '/add-transaction', 
-    '/history',
-    '/profile',
-    '/budget',
-    '/AI'
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (images, etc.)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
   ],
 };
 
@@ -23,18 +23,8 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET 
   });
 
-  const publicRoutes = ['/', '/signin', '/signup']; // Updated to /signin
+  const publicRoutes = ['/', '/signin', '/signup'];
   const protectedRoutes = ['/dashboard', '/add-transaction', '/history', '/profile', '/budget', '/AI'];
-
-  // Allow API routes and NextAuth routes to pass through
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) {
-    return NextResponse.next();
-  }
-
-  // Debug logging (remove in production)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Middleware - Path:', pathname, 'Has Token:', !!token);
-  }
 
   // Handle root path
   if (pathname === '/') {
@@ -50,7 +40,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect unauthenticated users from protected routes to signin
   if (!token && protectedRoutes.some(route => pathname.startsWith(route))) {
-    const signinUrl = new URL('/signin', request.url); // Updated to /signin
+    const signinUrl = new URL('/', request.url);
     signinUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(signinUrl);
   }

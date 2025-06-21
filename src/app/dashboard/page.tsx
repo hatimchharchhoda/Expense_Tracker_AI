@@ -1,48 +1,31 @@
 // app/dashboard/page.tsx
 'use client'
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from "@/store/authSlice";
 import { useSession } from "next-auth/react";
 import axios from 'axios';
 import { useTheme } from 'next-themes';
-import { 
-  Chart, 
-  ArcElement, 
-  CategoryScale, 
-  LinearScale, 
-  BarElement, 
-  Title, 
-  Tooltip, 
-  Legend 
-} from 'chart.js';
-import { Doughnut, Bar } from 'react-chartjs-2';
-import { getTotal } from '@/helper/graphData';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PREDEFINED_CATEGORIES } from '@/models/model';
 import { 
-  ArrowDownIcon, 
-  ArrowUpIcon, 
-  DollarSign, 
-  Wallet, 
   RefreshCw, 
-  BarChart3, 
-  PieChart, 
-  TrendingUp, 
-  Clock, 
   AlertCircle,
-  Coins,
   Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import Label from '@/components/Labels';
-import { Chart as Area } from '@/components/AreaGraph';
+import '@/lib/chartSetup';
 
-// Register Chart.js components
-Chart.register(ArcElement, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+// Import dashboard components
+import { SummaryCards } from '@/components/dashboard/SummaryCards';
+import { ExpenseChart } from '@/components/dashboard/ExpenseChart';
+import { CategoryBreakdown } from '@/components/dashboard/CategoryBreakdown';
+import { BudgetProgress } from '@/components/dashboard/BudgetProgress';
+import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
+import { ExpenseTrends } from '@/components/dashboard/ExpenseTrends';
+import { TransactionDistribution } from '@/components/dashboard/TransactionDistribution';
 
 export interface AuthState {
   status: boolean;
@@ -88,7 +71,7 @@ function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
   const dispatch = useDispatch();
   const user = useSelector((state: any) => state.auth?.userData || {});
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
   // Set mounted state to enable client-side rendering
@@ -97,13 +80,13 @@ function DashboardPage() {
   }, []);
 
   // Cache duration (2 minutes for dashboard data since it changes frequently)
-  const CACHE_DURATION = 2 * 60 * 1000;
+  const CACHE_DURATION = useMemo(() => 2 * 60 * 1000, []);
 
   // Month names for display
-  const monthNames = [
+  const monthNames = useMemo(() => [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  ], []);
 
   // Generate year options (current year - 5 to current year + 1)
   const yearOptions = useMemo(() => {
@@ -138,14 +121,14 @@ function DashboardPage() {
     }
   }, [session, dispatch]);
 
-  const saveToCache = (transactions: Transaction[], budgets: Budget[]) => {
+  const saveToCache = useCallback((transactions: Transaction[], budgets: Budget[]) => {
     const cacheData: CachedDashboardData = {
       transactions,
       budgets,
       timestamp: Date.now()
     };
     localStorage.setItem('dashboardCache', JSON.stringify(cacheData));
-  };
+  }, []);
 
   const getFromCache = useCallback((): { transactions: Transaction[], budgets: Budget[] } | null => {
     try {
@@ -166,7 +149,7 @@ function DashboardPage() {
       localStorage.removeItem('dashboardCache');
       return null;
     }
-  }, []);
+  }, [CACHE_DURATION]);
 
   const fetchDashboardData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -206,7 +189,7 @@ function DashboardPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.user?._id]);
+  }, [user?.user?._id, saveToCache]);
   
   useEffect(() => {
     // Only fetch data when we have user data
@@ -232,7 +215,7 @@ function DashboardPage() {
     }
   }, [fetchDashboardData, getFromCache, user?.user?._id]);
 
-  // Filter transactions based on selected month and year
+  // Filter transactions based on selected month and year - MEMOIZED
   const filteredTransactions = useMemo(() => {
     return transactions.filter(transaction => {
       const transactionDate = new Date(transaction.date);
@@ -241,33 +224,44 @@ function DashboardPage() {
     });
   }, [transactions, selectedMonth, selectedYear]);
 
-  // Calculate summary data using filtered transactions
-  const expenseTransactions = filteredTransactions.filter(transaction => transaction.type !== 'Income' && transaction.type !== 'Savings');
-  const incomeTransactions = filteredTransactions.filter(transaction => transaction.type === 'Income');
-  const savingsTransactions = filteredTransactions.filter(transaction => transaction.type === 'Savings');
+  // MEMOIZED: Calculate summary data using filtered transactions
+  const dashboardData = useMemo(() => {
+    const expenseTransactions = filteredTransactions.filter(t => t.type !== 'Income' && t.type !== 'Savings');
+    const incomeTransactions = filteredTransactions.filter(t => t.type === 'Income');
+    const savingsTransactions = filteredTransactions.filter(t => t.type === 'Savings');
+    
+    const totalExpenses = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalSavings = savingsTransactions.reduce((sum, t) => sum + t.amount, 0);
+    
+    return {
+      expenseTransactions,
+      incomeTransactions,
+      savingsTransactions,
+      totalExpenses,
+      totalIncome,
+      totalSavings
+    };
+  }, [filteredTransactions]);
   
-  const totalExpenses = expenseTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const totalIncome = incomeTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const totalSavings = savingsTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  
-  // Get recent transactions from filtered data
+  // MEMOIZED: Get recent transactions from filtered data
   const recentTransactions = useMemo(() => {
     return [...filteredTransactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
   }, [filteredTransactions]);
   
-  // Get category data for budget comparison using filtered transactions
+  // MEMOIZED: Get category data for budget comparison using filtered transactions
   const categoryTotals = useMemo(() => {
-    return expenseTransactions.reduce((acc, transaction) => {
+    return dashboardData.expenseTransactions.reduce((acc, transaction) => {
       const { type, amount } = transaction;
       if (!acc[type]) acc[type] = 0;
       acc[type] += amount;
       return acc;
     }, {} as Record<string, number>);
-  }, [expenseTransactions]);
+  }, [dashboardData.expenseTransactions]);
   
-  // Prepare budget vs actual data for selected month/year
+  // MEMOIZED: Prepare budget vs actual data for selected month/year
   const budgetVsActualData = useMemo(() => {
     return PREDEFINED_CATEGORIES
       .filter(cat => cat.type !== 'Income' && cat.type !== 'Savings')
@@ -289,7 +283,7 @@ function DashboardPage() {
       });
   }, [budgets, categoryTotals, selectedMonth, selectedYear]);
 
-  // Prepare data for monthly expenses bar chart (showing full year but highlighting selected month)
+  // MEMOIZED: Prepare data for monthly expenses bar chart
   const monthlyExpenseData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
@@ -337,7 +331,7 @@ function DashboardPage() {
     };
   }, [transactions, selectedYear, selectedMonth, theme]);
 
-  // Create doughnut chart data for expense categories using filtered data
+  // MEMOIZED: Create doughnut chart data for expense categories using filtered data
   const createDoughnutChartData = useMemo(() => {
     // Get expense categories and their totals from filtered data
     const categories = Object.keys(categoryTotals);
@@ -361,15 +355,15 @@ function DashboardPage() {
     };
   }, [categoryTotals, theme]);
 
-  // Area chart data for expenses using filtered data
+  // MEMOIZED: Area chart data for expenses using filtered data
   const areaChartData = useMemo(() => {
-    return expenseTransactions.map((transact) => {
+    return dashboardData.expenseTransactions.map((transact) => {
       return {
         month: transact.name,
         desktop: transact.amount,
       };
     });
-  }, [expenseTransactions]);
+  }, [dashboardData.expenseTransactions]);
 
   // Show initial loading state
   if ((sessionStatus === 'loading' && !user?.user) || !mounted) {
@@ -391,7 +385,7 @@ function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {[1, 2, 3].map((i) => (
+          {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[130px] w-full rounded-xl" />
           ))}
         </div>
@@ -417,7 +411,7 @@ function DashboardPage() {
           <p className="mb-6 text-muted-foreground">{error}</p>
           <Button 
             onClick={() => fetchDashboardData(true)}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             Try Again
             <RefreshCw className="ml-2 h-4 w-4" />
@@ -482,499 +476,74 @@ function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-green-500/20 dark:bg-green-500/10 flex items-center justify-center">
-              <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">₹{totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div className="flex items-center mt-1">
-              <p className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
-                {incomeTransactions.length} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-red-500/20 dark:bg-red-500/10 flex items-center justify-center">
-              <Wallet className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div className="flex items-center mt-1">
-              <p className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full">
-                {expenseTransactions.length} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* New Savings Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-            <div className="h-8 w-8 rounded-full bg-purple-500/20 dark:bg-purple-500/10 flex items-center justify-center">
-              <Coins className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">₹{totalSavings.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div className="flex items-center mt-1">
-              <p className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full">
-                {savingsTransactions.length} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Remaining Balance</CardTitle>
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-              totalIncome - totalExpenses - totalSavings >= 0 
-                ? 'bg-blue-500/20 dark:bg-blue-500/10' 
-                : 'bg-amber-500/20 dark:bg-amber-500/10'
-            }`}>
-              {totalIncome - totalExpenses - totalSavings >= 0 ? (
-                <ArrowUpIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              ) : (
-                <ArrowDownIcon className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              ₹{Math.abs(totalIncome - totalExpenses - totalSavings).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="flex items-center mt-1">
-              <p className={`text-xs px-2 py-0.5 rounded-full ${
-                totalIncome - totalExpenses - totalSavings >= 0 
-                  ? 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30'
-                  : 'text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30'
-              }`}>
-                {totalIncome - totalExpenses - totalSavings >= 0 ? 'Available funds' : 'Deficit'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <SummaryCards
+        totalIncome={dashboardData.totalIncome}
+        totalExpenses={dashboardData.totalExpenses}
+        totalSavings={dashboardData.totalSavings}
+        incomeCount={dashboardData.incomeTransactions.length}
+        expenseCount={dashboardData.expenseTransactions.length}
+        savingsCount={dashboardData.savingsTransactions.length}
+      />
 
       {/* Main Dashboard Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Monthly Expenses Bar Chart */}
-        <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Monthly Expenses - {selectedYear}
-                </CardTitle>
-                <CardDescription>
-                  Your spending pattern throughout {selectedYear} (highlighted: {monthNames[selectedMonth - 1]})
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {transactions.some(t => new Date(t.date).getFullYear() === selectedYear && t.type !== 'Income' && t.type !== 'Savings') ? (
-              <div className="h-[300px] w-full mt-2">
-                <Bar 
-                  data={monthlyExpenseData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        grid: {
-                          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)',
-                        },
-                        ticks: {
-                          callback: function(value) {
-                            return '₹' + value;
-                          },
-                          font: {
-                            size: 10
-                          },
-                          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
-                        }
-                      },
-                      x: {
-                        grid: {
-                          display: false
-                        },
-                        ticks: {
-                          font: {
-                            size: 10
-                          },
-                          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)'
-                        }
-                      }
-                    },
-                    plugins: {
-                      legend: {
-                        display: false
-                      },
-                      tooltip: {
-                        backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)',
-                        padding: 10,
-                        cornerRadius: 6,
-                        callbacks: {
-                          label: function(context) {
-                            return '₹' + (context.raw as number).toLocaleString('en-IN');
-                          }
-                        }
-                      }
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] p-6 bg-accent/30 rounded-lg">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No expense data available for {selectedYear}</p>
-                <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Add your first transaction
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ExpenseChart
+          monthlyExpenseData={monthlyExpenseData}
+          theme={theme || 'light'}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+          monthNames={monthNames}
+          hasData={transactions.some(t => new Date(t.date).getFullYear() === selectedYear && t.type !== 'Income' && t.type !== 'Savings')}
+        />
         
         {/* Category Breakdown */}
-        <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <PieChart className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Spending by Category
-                </CardTitle>
-                <CardDescription>
-                  Breakdown for {monthNames[selectedMonth - 1]} {selectedYear}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {expenseTransactions.length > 0 ? (
-              <div className="relative h-[300px] flex items-center justify-center">
-                {/* Centered Total */}
-                <div className="absolute inset-0 flex flex-col justify-center items-center z-10 pointer-events-none pb-7">
-                  <div className="bg-card/90 backdrop-blur-sm px-4 py-3 rounded-full shadow-sm border border-border">
-                    <h3 className="text-xs font-medium text-muted-foreground">Monthly Expenses</h3>
-                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      ₹{totalExpenses.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Doughnut Chart */}
-                <div className="relative h-[300px] flex items-center justify-center" style={{ overflow: 'visible' }}>
-                  <div className="h-[290px] w-[290px]">
-                    <Doughnut 
-                      data={createDoughnutChartData}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '65%',
-                        plugins: {
-                          legend: {
-                            display: true,
-                            position: 'bottom',
-                            labels: {
-                              boxWidth: 12,
-                              padding: 15,
-                              usePointStyle: true,
-                              pointStyle: 'circle',
-                              font: {
-                                size: 11
-                              },
-                              color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'
-                            }
-                          },
-                          tooltip: {
-                            backgroundColor: theme === 'dark' ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.7)',
-                            padding: 10,
-                            cornerRadius: 6,
-                            callbacks: {
-                              label: function(context) {
-                                const value = context.raw;
-                                const percentage = totalExpenses > 0 ? ((value as number) / totalExpenses * 100).toFixed(1) : '0';
-                                return `₹${(value as number).toLocaleString('en-IN')} (${percentage}%)`;
-                              }
-                            }
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] p-6 bg-accent/30 rounded-lg">
-                <PieChart className="h-12 w-12 text-muted-foreground mb-3" />
-                                <p className="text-muted-foreground text-center mb-2">No category data available for {monthNames[selectedMonth - 1]} {selectedYear}</p>
-                <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Add your first transaction
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <CategoryBreakdown
+          expenseTransactions={dashboardData.expenseTransactions}
+          createDoughnutChartData={createDoughnutChartData}
+          totalExpenses={dashboardData.totalExpenses}
+          theme={theme || 'light'}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          monthNames={monthNames}
+        />
         
         {/* Budget vs Actual Section */}
-        <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Budget Progress
-                </CardTitle>
-                <CardDescription>
-                  {monthNames[selectedMonth - 1]} {selectedYear} spending vs budget
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {budgetVsActualData.some(item => item.budget > 0) ? (
-              <div className="space-y-5 mt-3">
-                {budgetVsActualData
-                  .filter(item => item.budget > 0)
-                  .map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 rounded-full mr-2"
-                            style={{ 
-                              backgroundColor: PREDEFINED_CATEGORIES.find(
-                                cat => cat.type === item.category
-                              )?.color || '#ccc' 
-                            }}
-                          />
-                          <span className="text-sm font-medium text-foreground">{item.category}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className={`text-sm font-medium ${
-                            item.actual > item.budget 
-                              ? 'text-red-600 dark:text-red-400' 
-                              : 'text-foreground'
-                          }`}>
-                            ₹{item.actual.toLocaleString('en-IN')}
-                          </span>
-                          <span className="text-muted-foreground mx-1">/</span>
-                          <span className="text-sm text-muted-foreground">
-                            ₹{item.budget.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="h-2.5 bg-secondary/50 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${
-                            item.actual > item.budget 
-                              ? 'bg-red-500' 
-                              : item.actual > item.budget * 0.8
-                                ? 'bg-amber-500'
-                                : 'bg-green-500'
-                          }`}
-                          style={{ 
-                            width: `${Math.min(100, (item.actual / item.budget) * 100)}%`,
-                            transition: 'width 1s ease-in-out'
-                          }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>
-                          {Math.min(100, Math.round((item.actual / item.budget) * 100))}% used
-                        </span>
-                        {item.remaining > 0 && (
-                          <span className="text-green-600 dark:text-green-400">
-                            ₹{item.remaining.toLocaleString('en-IN')} remaining
-                          </span>
-                        )}
-                        {item.remaining < 0 && (
-                          <span className="text-red-600 dark:text-red-400">
-                            ₹{Math.abs(item.remaining).toLocaleString('en-IN')} over budget
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[260px] p-6 bg-accent/30 rounded-lg">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No budget data for {monthNames[selectedMonth - 1]} {selectedYear}</p>
-                <Link href="/budget" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Set up your budget
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <BudgetProgress
+          budgetVsActualData={budgetVsActualData}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          monthNames={monthNames}
+        />
         
         {/* Recent Transactions */}
-        <Card className="shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center">
-                  <Clock className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  Recent Transactions
-                </CardTitle>
-                <CardDescription>
-                  Latest transactions for {monthNames[selectedMonth - 1]} {selectedYear}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recentTransactions.length > 0 ? (
-              <div className="space-y-4 mt-3">
-                {recentTransactions.map((transaction) => (
-                  <div key={transaction._id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                    <div className="flex items-center">
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0" 
-                        style={{ backgroundColor: `${transaction.color}30` }}
-                      >
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: transaction.color }}
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{transaction.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(transaction.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`text-sm font-medium ${
-                      transaction.type === 'Income' 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {transaction.type === 'Income' ? '+' : '-'}₹{transaction.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                    </div>
-                  </div>
-                ))}
-                {filteredTransactions.length > 5 && (
-                  <div className="pt-4 text-center">
-                    <Link 
-                      href="/history" 
-                      className="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300"
-                    >
-                      View all transactions for {monthNames[selectedMonth - 1]}
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[260px] p-6 bg-accent/30 rounded-lg">
-                <Clock className="h-12 w-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground text-center mb-2">No transactions for {monthNames[selectedMonth - 1]} {selectedYear}</p>
-                <Link href="/add-transaction" className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
-                  Add your first transaction
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <RecentTransactions
+          recentTransactions={recentTransactions}
+          filteredTransactions={filteredTransactions}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          monthNames={monthNames}
+        />
       </div>
       
       {/* Area Chart and Doughnut Chart Row */}
       {filteredTransactions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
           {/* Area Chart */}
-          <Card className="shadow-md border border-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Expense Trends
-              </CardTitle>
-              <CardDescription>
-                Expense patterns for {monthNames[selectedMonth - 1]} {selectedYear}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="h-[300px]">
-                <Area chartData={areaChartData} />
-              </div>
-            </CardContent>
-          </Card>
+          <ExpenseTrends
+            areaChartData={areaChartData}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            monthNames={monthNames}
+          />
 
           {/* Original Chart with Labels */}
-          <Card className="shadow-md border border-border">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <PieChart className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                Transaction Distribution
-              </CardTitle>
-              <CardDescription>
-                Overview of {monthNames[selectedMonth - 1]} {selectedYear} transactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="flex flex-col items-center">
-                {/* Centered Total */}
-                <div className="relative w-[250px] h-[250px]">
-                  <div className="absolute inset-0 flex flex-col justify-center items-center z-10">
-                    <h3 className="text-sm font-medium text-muted-foreground">Total</h3>
-                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      ₹{getTotal(filteredTransactions) ?? 0}
-                    </span>
-                  </div>
-                  
-                  {/* Doughnut Chart */}
-                  <Doughnut 
-                    data={
-                      {
-                        datasets: [{
-                            data: filteredTransactions.map(v => v.amount),
-                            backgroundColor: filteredTransactions.map(v => v.color),
-                            hoverOffset: 4,
-                            borderRadius: 30,
-                            spacing: 10
-                        }],
-                        labels: filteredTransactions.map(v => v.type)
-                      }
-                    }
-                    options={{
-                      cutout: '60%',
-                      plugins: {
-                        legend: {
-                          display: false
-                        }
-                      }
-                    }}
-                  />
-                </div>
-                
-                <div className="flex flex-col pt-2 gap-2 w-full max-w-xs">
-                  <Label />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TransactionDistribution
+            filteredTransactions={filteredTransactions}
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            monthNames={monthNames}
+          />
         </div>
       )}
 
@@ -1041,4 +610,4 @@ function DashboardPage() {
   );
 }
 
-export default DashboardPage;
+export default memo(DashboardPage);

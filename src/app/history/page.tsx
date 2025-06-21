@@ -18,7 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDispatch, useSelector } from 'react-redux';
 import { filterOptions } from '@/constants/filterOptions';
-import { login } from '@/store/authSlice';
+import { login,updateUser } from '@/store/authSlice';
 import { PREDEFINED_CATEGORIES } from '@/models/model';
 import {
   Popover,
@@ -215,7 +215,7 @@ export default function TransactionsHistoryPage() {
             spent: user.user.spent - transactionAmount
           }
         };
-        dispatch(login(updatedUser));
+        dispatch(updateUser({ spent: user.user.spent - transactionAmount }));
         toast({
           title: 'Success',
           description: "Transaction Deleted",
