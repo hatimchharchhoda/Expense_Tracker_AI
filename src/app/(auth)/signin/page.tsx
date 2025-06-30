@@ -20,7 +20,6 @@ import { signInSchema } from '@/schemas/signInSchema';
 import { useState } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Mail, Lock, Loader2 } from 'lucide-react';
-import { FcGoogle } from 'react-icons/fc';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -164,7 +163,7 @@ export default function SignInForm() {
               </div>
 
               {/* Google Sign-In Button */}
-              <Button
+              {/* <Button
                 type="button"
                 variant="outline"
                 className="w-full mb-6 h-12 border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -182,10 +181,10 @@ export default function SignInForm() {
                     Continue with Google
                   </>
                 )}
-              </Button>
+              </Button> */}
 
               {/* Divider */}
-              <div className="relative mb-6">
+              {/* <div className="relative mb-6">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-gray-300 dark:border-gray-600" />
                 </div>
@@ -194,7 +193,7 @@ export default function SignInForm() {
                     Or continue with email
                   </span>
                 </div>
-              </div>
+              </div> */}
               
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
