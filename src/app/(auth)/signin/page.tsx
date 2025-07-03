@@ -253,7 +253,7 @@ export default function SignInForm() {
                     )}
                   </Button>
 
-                                    <Button
+                                    {/* <Button
                     type="button"
                     variant="outline"
                     className="w-full mt-2"
@@ -268,7 +268,7 @@ export default function SignInForm() {
                     ) : (
                       'Login as Guest'
                     )}
-                  </Button>
+                  </Button> */}
                 </form>
               </Form>
               
